@@ -669,11 +669,13 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
+const APP_VER=7;   // bumped on breaking sync changes; the database rejects writes from older app code
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
   try{ BASE=JSON.parse(JSON.stringify(obj)); }catch(e){ BASE=null; }
   try{ LOCAL.set(KEY+"_syncrev", String((obj&&obj._rev)||"")); }catch(e){}
+  try{ LOCAL.set(KEY+"_base", JSON.stringify(obj)); }catch(e){}   // reference copy so offline edits can merge properly later
 }
 const sameJSON=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
 /* Three-way merge: start from what's in the cloud now, then apply only what WE changed since our last sync. */
@@ -681,7 +683,7 @@ function mergeStates(base,local,remote){
   base=base||{};
   const out=JSON.parse(JSON.stringify(remote));
   Object.keys(local).forEach(k=>{
-    if(k==="_rev"||LIST_KEYS.includes(k)) return;
+    if(k==="_rev"||k==="_appver"||LIST_KEYS.includes(k)) return;
     if(!sameJSON(local[k],base[k])) out[k]=local[k];                                   // we changed this setting → ours wins
   });
   LIST_KEYS.forEach(k=>{
@@ -706,7 +708,14 @@ async function reconcileLocal(remote){
     if(!localCopy||!localCopy._rev||localCopy._rev===remote._rev) return remote;
     const sr=await LOCAL.get(KEY+"_syncrev");
     if(sr&&sr.value&&String(remote._rev)===sr.value) return localCopy;                 // cloud hasn't moved since our last sync → our local copy is simply newer
-    if(+localCopy._rev>+(remote._rev||0)){                                            // both moved → keep the cloud, add any records only this device has
+    /* both moved — if we kept the reference copy from our last sync, do a full record-level
+       merge so edits made offline to EXISTING records (like a timesheet) survive too */
+    try{
+      const b=await LOCAL.get(KEY+"_base");
+      if(b&&b.value){ const sbase=JSON.parse(b.value);
+        if(sbase&&sr&&sr.value&&String(sbase._rev)===sr.value) return mergeStates(sbase,localCopy,remote); }
+    }catch(e){}
+    if(+localCopy._rev>+(remote._rev||0)){                                            // fallback: keep the cloud, add any records only this device has
       const out=JSON.parse(JSON.stringify(remote));
       LIST_KEYS.forEach(k=>{
         const rm=new Map((Array.isArray(remote[k])?remote[k]:[]).map(x=>[x&&x.id,x]));
@@ -736,7 +745,7 @@ async function cloudSet(obj){
       if(e2) throw e2;
       const remote=cur&&cur.data?cur.data:null;
       if(remote){
-        const merged=mergeStates(BASE,obj,remote); merged._rev=Date.now();
+        const merged=mergeStates(BASE,obj,remote); merged._rev=Date.now(); merged._appver=APP_VER;
         snapBase(remote); obj=merged; DB=merged;
         try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e){}
         continue;
@@ -763,7 +772,7 @@ async function load(){
   DB=JSON.parse(JSON.stringify(SEED)); normalizeDB(); await save(true);
 }
 async function save(silent){
-  DB._rev=Date.now();
+  DB._rev=Date.now(); DB._appver=APP_VER;
   const json=JSON.stringify(DB);
   try{ await LOCAL.set(KEY,json); }catch(e){}
   if(SB && CLOUD){ try{ await cloudSet(DB); }catch(e){ CLOUD=false; updateCloudBadge(); } }
@@ -777,10 +786,22 @@ async function cloudRefresh(){
   if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;        // don't interrupt someone typing
   if(!CLOUD){                                     // connection dropped earlier — quietly reconnect and fold local edits back in
     if(!AUTHED) return;
-    try{ const remote=await cloudGet(); if(remote){ DB=await reconcileLocal(remote); normalizeDB(); CLOUD=true; await save(true); render(); } }catch(e){}
+    try{
+      const prevBase=BASE;
+      const remote=await cloudGet();
+      if(remote){ DB=prevBase?mergeStates(prevBase,DB,remote):await reconcileLocal(remote); normalizeDB(); CLOUD=true; await save(true); render(); }
+    }catch(e){}
     return;
   }
-  try{ const remote=await cloudGet(); if(remote && remote._rev && remote._rev!==DB._rev){ DB=remote; normalizeDB(); render(); } }catch(e){}
+  try{
+    const remote=await cloudGet();
+    if(remote && remote._appver && remote._appver>APP_VER){        // a newer version of the app is live — reload to get it
+      const last=+(sessionStorage.getItem("_vreload")||0);
+      if(Date.now()-last>600000){ sessionStorage.setItem("_vreload",String(Date.now())); location.reload(); }
+      return;
+    }
+    if(remote && remote._rev && remote._rev!==DB._rev){ DB=remote; normalizeDB(); render(); }
+  }catch(e){}
 }
 function updateCloudBadge(){
   const b=$("#cloudBadge"); if(!b) return;
