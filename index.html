@@ -724,6 +724,13 @@
   .cc-btn.out{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.09));color:var(--cream);border:1px solid rgba(233,196,106,.55);box-shadow:0 8px 20px rgba(0,0,0,.22)}
   @media(max-width:480px){.cc-time{font-size:26px}.cc-btn{padding:15px 18px;font-size:14.5px}}
 
+  /* -- update-ready pill: waits politely instead of reloading over your typing -- */
+  .upd-pill{position:fixed;bottom:calc(96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:70;
+    background:rgba(11,48,59,.96);color:var(--cream);border:1px solid rgba(233,196,106,.55);border-radius:999px;
+    padding:11px 18px;font-weight:700;font-size:13px;box-shadow:var(--shadow-2);cursor:pointer;backdrop-filter:blur(8px)}
+  .upd-pill:hover{border-color:var(--gold)}
+  @media(min-width:741px){.upd-pill{bottom:28px}}
+
   /* -- gentle entrance for each view -- */
   @media(prefers-reduced-motion:no-preference){
     #view{animation:viewIn .28s ease both}
@@ -835,6 +842,31 @@ function normalizeDB(){
     addR("e39"); addR("e46");
     DB._dkoff1=1;
   }
+  /* heal accidental duplicate timesheets (same person + same period): merge day-by-day, entries always win */
+  if(Array.isArray(DB.timesheets)&&DB.timesheets.length>1){
+    const byKey={}, out=[];
+    const hasData=x=>!!(x&&(((x.segs||[]).length)||(+x.vac||0)>0||(x.notes||"")));
+    DB.timesheets.forEach(ts=>{
+      const k=(ts.empId||"")+"|"+(ts.start||"");
+      const ex=byKey[k];
+      if(!ex){ byKey[k]=ts; out.push(ts); return; }
+      (ts.days||[]).forEach(d=>{
+        let ed=(ex.days=ex.days||[]).find(x=>x&&x.date===d.date);
+        if(!ed){ ex.days.push(d); return; }
+        if(hasData(d)&&!hasData(ed)){ Object.assign(ed,d); }
+        else if(hasData(d)&&hasData(ed)){
+          const key=s=>s.in+"|"+s.out+"|"+(s.shift||"");
+          const seen=new Set((ed.segs||[]).map(key));
+          (d.segs||[]).forEach(s=>{ if(!seen.has(key(s))) (ed.segs=ed.segs||[]).push(s); });
+          ed.vac=Math.max(+ed.vac||0,+d.vac||0);
+          if(d.notes&&d.notes!==ed.notes) ed.notes=(ed.notes?ed.notes+" · ":"")+d.notes;
+        }
+      });
+      ex.submitted=!!(ex.submitted||ts.submitted);
+      if(!ex.approvedBy&&ts.approvedBy){ ex.approvedBy=ts.approvedBy; ex.approvedTs=ts.approvedTs; }
+    });
+    DB.timesheets=out;
+  }
 }
 /* ============================================================
    BACKEND — Supabase shared storage (all devices see the same live data).
@@ -868,7 +900,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=14;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=15;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -891,7 +923,7 @@ function mergeStates(base,local,remote){
     const res=[];
     r.forEach(x=>{ const id=x&&x.id;
       if(lm.has(id)){ const lv=lm.get(id); res.push(sameJSON(lv,bm.get(id))?x:lv); }   // we edited it → ours; untouched → theirs
-      else if(bm.has(id)){ if(!sameJSON(x,bm.get(id))) res.push(x); }                  // we deleted it — stays deleted unless they changed it since
+      else if(bm.has(id)){ if(!sameJSON(x,bm.get(id)) || k==="timesheets") res.push(x); }  // deletions stick — but hour sheets are NEVER dropped implicitly
       else res.push(x);                                                               // they added it → keep
     });
     l.forEach(x=>{ const id=x&&x.id; if(id&&!rm.has(id)&&(!bm.has(id)||!sameJSON(x,bm.get(id)))) res.push(x); }); // anything we added or edited is never dropped
@@ -970,9 +1002,29 @@ async function load(){
   try{ const r=await LOCAL.get(KEY); if(r&&r.value){ DB=JSON.parse(r.value); normalizeDB(); await save(true); return; } }catch(e){}
   DB=JSON.parse(JSON.stringify(SEED)); normalizeDB(); await save(true);
 }
-function reloadForUpdate(){   // fetch the newest app code, then retry — used when the server says our tab is out of date
-  const last=+(sessionStorage.getItem("_vreload")||0);
-  if(Date.now()-last>60000){ sessionStorage.setItem("_vreload",String(Date.now())); try{flash("Updating to the latest version…");}catch(e){} setTimeout(()=>location.reload(),700); }
+/* A new version being available must NEVER interrupt someone entering data.
+   We reload at most once per version, only when nothing is being typed;
+   otherwise a small "Update ready" pill waits for the user. */
+function typingNow(){
+  if($("#overlay")&&$("#overlay").classList.contains("on")) return true;
+  const ae=document.activeElement;
+  return !!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
+}
+function reloadForUpdate(ver){
+  ver=String(ver||"srv");
+  try{
+    if(typingNow()){ showUpdatePill(); return; }
+    if(localStorage.getItem("_vtried")===ver){ showUpdatePill(); return; }   // already tried for this version — never loop
+    localStorage.setItem("_vtried",ver);
+    setTimeout(()=>location.reload(),400);
+  }catch(e){}
+}
+function showUpdatePill(){
+  if(document.getElementById("updPill")) return;
+  const b=document.createElement("button");
+  b.id="updPill"; b.className="upd-pill"; b.textContent="⬆ Update ready — tap to refresh";
+  b.onclick=()=>{ try{localStorage.removeItem("_vtried");}catch(e){} location.reload(); };
+  document.body.appendChild(b);
 }
 function isVersionError(e){ const m=(e&&(e.message||e.details||e.hint||""))+""; return /app_out_of_date/i.test(m); }
 async function save(silent){
@@ -999,7 +1051,7 @@ async function cloudRefresh(){
   }
   try{
     const remote=await cloudGet();
-    if(remote && remote._appver && remote._appver>APP_VER){ reloadForUpdate(); return; }   // a newer version is live — pick it up
+    if(remote && remote._appver && remote._appver>APP_VER){ reloadForUpdate(remote._appver); return; }   // a newer version is live — pick it up gently
     if(remote && remote._rev && remote._rev!==DB._rev){ DB=remote; normalizeDB(); render(); }
   }catch(e){}
 }
@@ -2739,7 +2791,19 @@ function openDay(empId,startStr,idx){
   const flex=!!(emp(empId)&&emp(empId).notesTime);
   const sh=dayShifts(src);
   const st={mIn:sh.am.in,mOut:sh.am.out,aIn:sh.pm.in,aOut:sh.pm.out,nIn:sh.note.in,nOut:sh.note.out};
-  window._editDay={empId,startStr,idx,date:src.date,admin,flex,shift:st,vac:+src.vac||0,notes:src.notes||""};
+  /* restore anything typed here that never got saved (survives refreshes, crashes, everything) */
+  let draftVac=+src.vac||0, draftNotes=src.notes||"", restored=false;
+  try{
+    const raw=sessionStorage.getItem("_dayDraft");
+    if(raw){ const dr=JSON.parse(raw);
+      if(dr.key===`${empId}|${startStr}|${idx}` && Date.now()-(dr.ts||0)<43200000){
+        Object.assign(st,dr.shift||{});
+        if(dr.vac!=="") draftVac=parseFloat(dr.vac)||0;
+        if(dr.notes) draftNotes=dr.notes;
+        restored=true;
+      } }
+  }catch(e){}
+  window._editDay={empId,startStr,idx,date:src.date,admin,flex,shift:st,vac:draftVac,notes:draftNotes,restored};
   const dt=parseD(src.date);
   const helper = admin
     ? `<div class="round-hint">Totals round <b>${ROUND_MODE==="off"?"exactly as entered":ROUND_MODE+" to the quarter hour"}</b> (e.g. 9:10 → 9:15).</div>`
@@ -2757,6 +2821,7 @@ function openDay(empId,startStr,idx){
   const prevLbl = prevIdx>=0 ? parseD(ts.days[prevIdx].date).toLocaleDateString("en-US",{weekday:"short"}) : "";
   const quickFill = `<div class="quickfill">${prevIdx>=0?`<button class="qf copy" onclick="copyPrevDay()">⧉ Same as ${prevLbl}</button>`:""}<button class="qf" onclick="presetDay()">Full day</button><button class="qf" onclick="presetAM('07:30','12:00')">Morning</button><button class="qf" onclick="presetPM('13:30','17:30')">Afternoon</button></div>`;
   openModal(`<h3>${dt.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</h3><div class="body" id="dayBody">
+    ${restored?`<div class="sec-status ok">✔ We saved what you were typing — it's all still here. Tap "Save day" to keep it.</div>`:""}
     ${quickFill}
     <div class="shift-block">
       <div class="shift-head"><span class="shift-name">☀️ Morning</span><span class="shift-sub">AM</span></div>
@@ -2775,8 +2840,8 @@ function openDay(empId,startStr,idx){
     ${noteBlock}
     ${helper}
     <div class="row2">
-      <div class="field"><label>Vacation / PTO hours</label><input class="inp" id="d_vac" type="number" step="0.25" value="${src.vac?round(src.vac):""}" placeholder="0" oninput="recalcDay()"></div>
-      <div class="field"><label>Notes</label><input class="inp" id="d_notes" value="${esc(src.notes||"")}" placeholder="e.g. Holiday"></div>
+      <div class="field"><label>Vacation / PTO hours</label><input class="inp" id="d_vac" type="number" step="0.25" value="${window._editDay.vac?round(window._editDay.vac):""}" placeholder="0" oninput="recalcDay()"></div>
+      <div class="field"><label>Notes</label><input class="inp" id="d_notes" value="${esc(window._editDay.notes||"")}" placeholder="e.g. Holiday" oninput="recalcDay()"></div>
     </div>
     <div class="day-total-line"><span>Daily total</span><span id="dayTotalOut">0 h</span></div>
   </div>
@@ -2831,9 +2896,11 @@ function shiftSegs(){
   if(s.nIn&&s.nOut) out.push({in:s.nIn,out:s.nOut,shift:"note"});
   return out;
 }
-function recalcDay(){ const vac=parseFloat($("#d_vac")?.value)||0; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac)+" h"; }
+function saveDayDraft(){ try{ const e=window._editDay; if(!e) return;
+  sessionStorage.setItem("_dayDraft",JSON.stringify({key:`${e.empId}|${e.startStr}|${e.idx}`,shift:e.shift,vac:($("#d_vac")?$("#d_vac").value:""),notes:($("#d_notes")?$("#d_notes").value:""),ts:Date.now()})); }catch(err){} }
+function recalcDay(){ const vac=parseFloat($("#d_vac")?.value)||0; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac)+" h"; saveDayDraft(); }
 function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; window._editDay.vac=0; saveDay(); }
-function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const segs=shiftSegs(); const ts=ensureTS(empId,startStr); ts.days[idx]={date:ts.days[idx].date,segs,vac,notes}; save();closeModal();render(); }
+function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const segs=shiftSegs(); const ts=ensureTS(empId,startStr); ts.days[idx]={date:ts.days[idx].date,segs,vac,notes}; try{sessionStorage.removeItem("_dayDraft");}catch(e){} save();closeModal();render(); }
 
 
 /* ---- print (matches paper form) ---- */
