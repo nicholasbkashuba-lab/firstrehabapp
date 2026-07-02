@@ -1,7 +1,7 @@
 /* First Rehab Team Portal — service worker.
    Keeps the app installable and able to open offline, while ALWAYS preferring
    the network for the page itself so new deploys reach everyone immediately. */
-const CACHE = "firstrehab-v1";
+const CACHE = "firstrehab-v2";
 const PRECACHE = [
   "/",
   "/manifest.webmanifest",
@@ -23,6 +23,29 @@ self.addEventListener("activate", (e) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+/* ---- Push notifications (announcements, messages, time-off updates) ---- */
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data.json(); } catch (_err) { d = { title: "First Rehab", body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || "First Rehab", {
+    body: d.body || "",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: { url: d.url || "/" }
+  }));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) { if ("focus" in c) return c.focus(); }
+      return clients.openWindow(url);
+    })
   );
 });
 
