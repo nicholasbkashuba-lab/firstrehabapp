@@ -597,17 +597,100 @@ const LOCAL = (typeof window!=="undefined" && window.storage) ? window.storage :
   async delete(k){ try{ localStorage.removeItem(k); }catch(e){} return {key:k,deleted:true}; }
 };
 function initCloud(){
-  try{ if(typeof window!=="undefined" && window.supabase && SB_URL && SB_KEY && SB_URL.indexOf("supabase.co")>-1){ SB=window.supabase.createClient(SB_URL,SB_KEY); return true; } }catch(e){}
+  try{ if(typeof window!=="undefined" && window.supabase && SB_URL && SB_KEY && SB_URL.indexOf("supabase.co")>-1){
+    SB=window.supabase.createClient(SB_URL,SB_KEY);
+    if(/type=recovery/.test(location.hash)||/type=recovery/.test(location.search)) RECOVERY=true;   // arrived from a reset-password email link
+    /* registered right away so the reset-link event can never be missed while the app is still loading */
+    try{ SB.auth.onAuthStateChange((ev)=>{
+      if(ev==="PASSWORD_RECOVERY"){ RECOVERY=true; try{ render(); }catch(e){} }
+      else if(ev==="SIGNED_OUT"){ SESSION=null; }
+    }); }catch(e){}
+    return true;
+  } }catch(e){}
   return false;
+}
+/* ---- Durability: nothing anyone enters may ever be lost ----
+   Every part of the data that's a list of records (timesheets, time off, …) is merged
+   record-by-record on save, so two people saving at the same moment can't wipe each
+   other out. The server also snapshots every previous version into a history table. */
+const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media"];
+let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
+function snapBase(obj){
+  try{ BASE=JSON.parse(JSON.stringify(obj)); }catch(e){ BASE=null; }
+  try{ LOCAL.set(KEY+"_syncrev", String((obj&&obj._rev)||"")); }catch(e){}
+}
+const sameJSON=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
+/* Three-way merge: start from what's in the cloud now, then apply only what WE changed since our last sync. */
+function mergeStates(base,local,remote){
+  base=base||{};
+  const out=JSON.parse(JSON.stringify(remote));
+  Object.keys(local).forEach(k=>{
+    if(k==="_rev"||LIST_KEYS.includes(k)) return;
+    if(!sameJSON(local[k],base[k])) out[k]=local[k];                                   // we changed this setting → ours wins
+  });
+  LIST_KEYS.forEach(k=>{
+    const b=Array.isArray(base[k])?base[k]:[], l=Array.isArray(local[k])?local[k]:[], r=Array.isArray(remote[k])?remote[k]:[];
+    const bm=new Map(b.map(x=>[x&&x.id,x])), lm=new Map(l.map(x=>[x&&x.id,x])), rm=new Map(r.map(x=>[x&&x.id,x]));
+    const res=[];
+    r.forEach(x=>{ const id=x&&x.id;
+      if(lm.has(id)){ const lv=lm.get(id); res.push(sameJSON(lv,bm.get(id))?x:lv); }   // we edited it → ours; untouched → theirs
+      else if(bm.has(id)){ if(!sameJSON(x,bm.get(id))) res.push(x); }                  // we deleted it — stays deleted unless they changed it since
+      else res.push(x);                                                               // they added it → keep
+    });
+    l.forEach(x=>{ const id=x&&x.id; if(id&&!rm.has(id)&&(!bm.has(id)||!sameJSON(x,bm.get(id)))) res.push(x); }); // anything we added or edited is never dropped
+    out[k]=res;
+  });
+  return out;
+}
+/* Anything saved on this device while it was offline gets folded back in on reconnect, never thrown away. */
+async function reconcileLocal(remote){
+  try{
+    const r=await LOCAL.get(KEY); if(!r||!r.value) return remote;
+    const localCopy=JSON.parse(r.value);
+    if(!localCopy||!localCopy._rev||localCopy._rev===remote._rev) return remote;
+    const sr=await LOCAL.get(KEY+"_syncrev");
+    if(sr&&sr.value&&String(remote._rev)===sr.value) return localCopy;                 // cloud hasn't moved since our last sync → our local copy is simply newer
+    if(+localCopy._rev>+(remote._rev||0)){                                            // both moved → keep the cloud, add any records only this device has
+      const out=JSON.parse(JSON.stringify(remote));
+      LIST_KEYS.forEach(k=>{
+        const rm=new Map((Array.isArray(remote[k])?remote[k]:[]).map(x=>[x&&x.id,x]));
+        (Array.isArray(localCopy[k])?localCopy[k]:[]).forEach(x=>{ if(x&&x.id&&!rm.has(x.id)) out[k]=(out[k]||[]).concat([x]); });
+      });
+      return out;
+    }
+  }catch(e){}
+  return remote;
 }
 async function cloudGet(){
   const {data,error}=await SB.from("app_state").select("data").eq("id",KEY).maybeSingle();
   if(error) throw error;
-  return data && data.data ? data.data : null;
+  const rows=data && data.data ? data.data : null;
+  if(rows) snapBase(rows);
+  return rows;
 }
 async function cloudSet(obj){
-  const {error}=await SB.from("app_state").upsert({id:KEY,data:obj,updated_at:new Date().toISOString()});
-  if(error) throw error;
+  for(let tries=0;tries<4;tries++){
+    const baseRev=BASE&&BASE._rev?String(BASE._rev):null;
+    if(baseRev){
+      /* only overwrite the version we actually loaded — if someone saved in between, merge first */
+      const {data,error}=await SB.from("app_state").update({data:obj,updated_at:new Date().toISOString()}).eq("id",KEY).eq("data->>_rev",baseRev).select("id");
+      if(error) throw error;
+      if(data&&data.length){ snapBase(obj); return; }
+      const {data:cur,error:e2}=await SB.from("app_state").select("data").eq("id",KEY).maybeSingle();
+      if(e2) throw e2;
+      const remote=cur&&cur.data?cur.data:null;
+      if(remote){
+        const merged=mergeStates(BASE,obj,remote); merged._rev=Date.now();
+        snapBase(remote); obj=merged; DB=merged;
+        try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e){}
+        continue;
+      }
+    }
+    const {error}=await SB.from("app_state").upsert({id:KEY,data:obj,updated_at:new Date().toISOString()});
+    if(error) throw error;
+    snapBase(obj); return;
+  }
+  throw new Error("Couldn't save — the connection is busy, please try again");
 }
 async function load(){
   initCloud();
@@ -632,8 +715,13 @@ async function save(silent){
   if(!silent) flash(CLOUD?"Saved to the cloud ☁️":"Saved on this device");
 }
 async function cloudRefresh(){
-  if(!SB || !CLOUD) return;
+  if(!SB) return;
   if($("#overlay") && $("#overlay").classList.contains("on")) return;   // don't interrupt an open form
+  if(!CLOUD){                                     // connection dropped earlier — quietly reconnect and fold local edits back in
+    if(!AUTHED) return;
+    try{ const remote=await cloudGet(); if(remote){ DB=await reconcileLocal(remote); normalizeDB(); CLOUD=true; await save(true); render(); } }catch(e){}
+    return;
+  }
   try{ const remote=await cloudGet(); if(remote && remote._rev && remote._rev!==DB._rev){ DB=remote; normalizeDB(); render(); } }catch(e){}
 }
 function updateCloudBadge(){
@@ -821,24 +909,28 @@ function renderLogin(){
 
        <div id="paneSignin">
          <h2>Welcome back</h2><p class="sub">Sign in with your work email and your password.</p>
+         <form onsubmit="event.preventDefault();doSignIn()">
          <label>Email</label>
-         <input id="siEmail" type="email" autocomplete="username" placeholder="you@firstrehabnpb.com">
+         <input id="siEmail" type="email" name="email" autocomplete="username" placeholder="you@firstrehabnpb.com">
          <label>Password</label>
-         <input id="siPass" type="password" autocomplete="current-password" placeholder="Your password" onkeydown="if(event.key==='Enter')doSignIn()">
-         <button class="btn-full" id="siBtn" onclick="doSignIn()">Sign in</button>
+         <input id="siPass" type="password" name="password" autocomplete="current-password" placeholder="Your password">
+         <button class="btn-full" id="siBtn" type="submit">Sign in</button>
+         </form>
          <div class="auth-msg" id="siMsg"></div>
          <button class="linkish" onclick="showForgot()">Forgot your password?</button>
        </div>
 
        <div id="paneEnroll" style="display:none">
          <h2>Set up your login</h2><p class="sub">First time here? Pick your name and choose a password only you'll know. You'll use these to sign in from any device.</p>
+         <form onsubmit="event.preventDefault();doEnroll()">
          <label>Who are you?</label>
          <select id="enName">${nameOpts||`<option value="">—</option>`}</select>
          <label>Your email</label>
-         <input id="enEmail" type="email" autocomplete="username" placeholder="you@firstrehabnpb.com">
+         <input id="enEmail" type="email" name="email" autocomplete="username" placeholder="you@firstrehabnpb.com">
          <label>Create a password <span class="lite">(at least 8 characters)</span></label>
-         <input id="enPass" type="password" autocomplete="new-password" placeholder="Choose a password" onkeydown="if(event.key==='Enter')doEnroll()">
-         <button class="btn-full" id="enBtn" onclick="doEnroll()">Create my login</button>
+         <input id="enPass" type="password" name="password" autocomplete="new-password" placeholder="Choose a password">
+         <button class="btn-full" id="enBtn" type="submit">Create my login</button>
+         </form>
          <div class="auth-msg" id="enMsg"></div>
        </div>
 
@@ -860,7 +952,7 @@ function loginTab(which){
 }
 async function afterAuthEnter(){
   // pull the real (now-authorized) data and go in
-  try{ const rows=await cloudGet(); if(rows){ DB=rows; normalizeDB(); await save(true); } CLOUD=true; LOCKED=false; }catch(e){}
+  try{ const rows=await cloudGet(); if(rows){ DB=await reconcileLocal(rows); normalizeDB(); await save(true); } CLOUD=true; LOCKED=false; }catch(e){}
   const me=empByEmail(AUTH_EMAIL);
   if(!me){ return {ok:false,msg:"That login isn't linked to a staff profile yet. Ask Nick to add your email to your profile."}; }
   if(!me.hasLogin){ me.hasLogin=true; try{ await save(true); }catch(e){} }   // persist enrollment so admin sees who's set up
@@ -877,7 +969,10 @@ async function doSignIn(){
     if(!r.ok){ msg.textContent=r.msg; msg.className="auth-msg err"; btn.disabled=false; return; }
     render(); window.scrollTo(0,0);
   }catch(e){
-    msg.textContent = /Invalid login/i.test(e.message||"")?"Email or password is incorrect.":(e.message||"Couldn't sign in.");
+    const m=e.message||"";
+    msg.textContent = /Invalid login/i.test(m)?"Email or password is incorrect. If you just created your login, make sure you confirmed your email first."
+      : /not confirmed/i.test(m)?"Your email isn't confirmed yet — click the link in the confirmation email we sent you (check spam), then sign in."
+      : (m||"Couldn't sign in.");
     msg.className="auth-msg err"; btn.disabled=false;
   }
 }
@@ -913,9 +1008,11 @@ function showForgot(){
   if(!pane) return;
   pane.innerHTML=`
     <h2>Reset your password</h2><p class="sub">Enter your email and we'll send you a link to set a new password.</p>
+    <form onsubmit="event.preventDefault();doForgot()">
     <label>Email</label>
-    <input id="fpEmail" type="email" autocomplete="username" placeholder="you@firstrehabnpb.com" onkeydown="if(event.key==='Enter')doForgot()">
-    <button class="btn-full" id="fpBtn" onclick="doForgot()">Email me a reset link</button>
+    <input id="fpEmail" type="email" name="email" autocomplete="username" placeholder="you@firstrehabnpb.com">
+    <button class="btn-full" id="fpBtn" type="submit">Email me a reset link</button>
+    </form>
     <div class="auth-msg" id="fpMsg"></div>
     <button class="linkish" onclick="loginTab('signin')">← Back to sign in</button>`;
 }
@@ -935,11 +1032,13 @@ function renderRecovery(){
      <div class="login-head"><img src="${LOGO_WHITE}" class="login-logo" alt="First Rehabilitation"><div class="tag">Team Time Portal</div></div>
      <div class="login-body">
        <h2>Choose a new password</h2><p class="sub">You're setting a fresh password for your account.</p>
+       <form onsubmit="event.preventDefault();doRecovery()">
        <label>New password <span class="lite">(at least 8 characters)</span></label>
-       <input id="rcA" type="password" autocomplete="new-password" placeholder="New password">
+       <input id="rcA" type="password" name="password" autocomplete="new-password" placeholder="New password">
        <label>Type it again</label>
-       <input id="rcB" type="password" autocomplete="new-password" placeholder="Confirm password" onkeydown="if(event.key==='Enter')doRecovery()">
-       <button class="btn-full" id="rcBtn" onclick="doRecovery()">Save new password</button>
+       <input id="rcB" type="password" autocomplete="new-password" placeholder="Confirm password">
+       <button class="btn-full" id="rcBtn" type="submit">Save new password</button>
+       </form>
        <div class="auth-msg" id="rcMsg"></div>
      </div>
    </div></div>`;
@@ -1421,6 +1520,7 @@ function openSecurity(){
     <div class="sec-step"><b>Login is required for everyone.</b> There is no passwordless quick-access. Anyone opening the portal must sign in, or tap <i>"First time here"</i> to create their password. So far <b>${enrolled} of ${total}</b> have set theirs up.</div>
     <div class="sec-step"><b>Database is locked down.</b> The data is protected by row-level security — a person must be signed in for the app to read or write anything. Visiting the link without a login shows only the sign-in screen.</div>
     <div class="sec-step"><b>Emails are live.</b> Password resets ("Forgot your password?") and sign-up confirmations are sent from your Resend-connected domain.</div>
+    <div class="sec-step"><b>Nothing gets lost.</b> Saves from different people merge together instead of overwriting each other, and the server keeps a history of the last 200 versions — so timesheets, requests and edits can always be recovered.</div>
     <div class="sec-step"><b>Closing enrollment.</b> Once everyone has a password, you can turn <i>off</i> new sign-ups in Supabase → Authentication → Providers → Email, so only existing staff can sign in.</div>
     <div class="round-hint">Need to add someone later? Add them under Employees with their email, then have them tap "First time here" to set a password.</div>
   </div><div class="foot"><button class="btn" onclick="closeModal()">Done</button></div>`);
@@ -2062,8 +2162,8 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
     await authSession();                         // restore an existing login on this device
     let rows=null, gotData=false;
     try{ rows=await cloudGet(); CLOUD=true; gotData=true; }catch(e){ CLOUD=false; }
-    if(gotData && rows){                          // data is readable (rollout mode, or we're signed in)
-      DB=rows; normalizeDB(); await save(true);
+    if(gotData && rows){                          // data is readable (we're signed in)
+      DB=await reconcileLocal(rows); normalizeDB(); await save(true);
       if(AUTHED){ const me=empByEmail(AUTH_EMAIL); if(me) SESSION=me.id; }
     } else if(gotData && !rows){                  // cloud reachable but no record
       if(AUTHED){                                 // signed in, empty cloud → seed it
@@ -2088,7 +2188,6 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
     setInterval(cloudRefresh, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) cloudRefresh(); });
     window.addEventListener("focus", cloudRefresh);
-    if(SB.auth && SB.auth.onAuthStateChange){ SB.auth.onAuthStateChange((ev)=>{ if(ev==="SIGNED_OUT"){ SESSION=null; } else if(ev==="PASSWORD_RECOVERY"){ RECOVERY=true; render(); } }); }
   }
 })();
 </script>
