@@ -526,7 +526,7 @@ function normalizeDB(){
   DB.media     = DB.media||[];
   DB.events    = DB.events||[];
   DB.clinic    = DB.clinic||(SEED.clinic)||{name:"First Rehabilitation",addr1:"733 U.S. Highway One, Suite 2A",addr2:"North Palm Beach, FL 33408"};
-  if(DB.clinic.authRequired===undefined) DB.clinic.authRequired=false;   // admin turns this on once everyone has a password
+  DB.clinic.authRequired=true;   // login is always required — no passwordless access
   if(!DB.roundMode) DB.roundMode="nearest";
   if(!DB._r15){ DB.roundMode="nearest"; DB._r15=1; }   // one-time: payroll shows nearest quarter-hour
   if(!DB._cal2026){                                     // one-time: import 2026 wall-planner time off + rename Joan→Joni, Charles→Chuck
@@ -665,7 +665,7 @@ async function authSignIn(email,pw){
   AUTHED=true; AUTH_EMAIL=(data.user.email||"").toLowerCase(); return data;
 }
 async function authSignUp(email,pw){
-  const {data,error}=await SB.auth.signUp({email:(email||"").trim().toLowerCase(),password:pw});
+  const {data,error}=await SB.auth.signUp({email:(email||"").trim().toLowerCase(),password:pw,options:{emailRedirectTo:location.origin}});
   if(error) throw error;
   if(data.session && data.user){ AUTHED=true; AUTH_EMAIL=(data.user.email||"").toLowerCase(); }
   return data;
@@ -674,7 +674,7 @@ async function authSignOut(){ try{ if(SB) await SB.auth.signOut(); }catch(e){} A
 async function authSetPassword(pw){ const {error}=await SB.auth.updateUser({password:pw}); if(error) throw error; }
 async function authReset(email){ const {error}=await SB.auth.resetPasswordForEmail((email||"").trim().toLowerCase(), {redirectTo: location.origin}); if(error) throw error; }
 function empByEmail(email){ if(!email) return null; email=(""+email).toLowerCase(); return (DB.employees||[]).find(e=>(e.email||"").toLowerCase()===email)||null; }
-function authRequired(){ return !!(DB && DB.clinic && DB.clinic.authRequired); }
+function authRequired(){ return true; }   // login is always required — no passwordless quick access
 
 
 /* ============= HELPERS ============= */
@@ -806,17 +806,14 @@ function signOut(){ if(AUTHED){ authSignOut(); } SESSION=null;TAB="";render();wi
 
 /* ================= LOGIN ================= */
 function renderLogin(){
-  const mustAuth = authOn() && (authRequired() || LOCKED);
-  const canPreview = !mustAuth;                 // preview picker only until real login is enforced
+  const online = authOn();                       // Supabase reachable → secure password logins
   const roster = (DB&&DB.employees?DB.employees:[]).filter(e=>e.active!==false);
   const nameOpts = roster.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join("");
-  const previewOpts=(DB&&DB.employees?DB.employees:[]).slice().sort((a,b)=>(a.role===b.role?a.name.localeCompare(b.name):(a.role==="admin"?-1:1)))
-    .map(e=>`<option value="${e.id}">${esc(e.name)}${e.role==="admin"?" — Admin":""}</option>`).join("");
   $("#root").innerHTML=`
    <div class="login-screen"><div class="login-card">
      <div class="login-head"><img src="${LOGO_WHITE}" class="login-logo" alt="First Rehabilitation"><div class="tag">Team Time Portal</div></div>
      <div class="login-body">
-       ${authOn()?`
+       ${online?`
        <div class="auth-tabs">
          <button class="auth-tab on" id="tabSignin" onclick="loginTab('signin')">Sign in</button>
          <button class="auth-tab" id="tabEnroll" onclick="loginTab('enroll')">First time here</button>
@@ -834,7 +831,7 @@ function renderLogin(){
        </div>
 
        <div id="paneEnroll" style="display:none">
-         <h2>Set up your login</h2><p class="sub">Pick your name and choose a password only you'll know. You'll use these to sign in from any device.</p>
+         <h2>Set up your login</h2><p class="sub">First time here? Pick your name and choose a password only you'll know. You'll use these to sign in from any device.</p>
          <label>Who are you?</label>
          <select id="enName">${nameOpts||`<option value="">—</option>`}</select>
          <label>Your email</label>
@@ -844,17 +841,13 @@ function renderLogin(){
          <button class="btn-full" id="enBtn" onclick="doEnroll()">Create my login</button>
          <div class="auth-msg" id="enMsg"></div>
        </div>
-       `:`
-       <h2>Sign in</h2><p class="sub">Pick your name to open the portal.</p>
-       `}
 
-       ${canPreview?`
-       <div class="demo-box">
-         <div class="dl">${authOn()?"Quick access (no password)":"Choose your name"}</div>
-         <div class="drow"><select id="demoSel">${previewOpts}</select><button class="enter" onclick="demoEnter()">Enter →</button></div>
-         <div class="hint">${authOn()?"Available while you're getting everyone set up. Turn it off from Login &amp; security once the team has passwords.":"Pick yourself for the admin view, or anyone to see what they'd see."}</div>
-       </div>`:`
-       <div class="hint" style="text-align:center;margin-top:14px">🔒 This portal is private to First Rehabilitation staff.</div>`}
+       <div class="hint" style="text-align:center;margin-top:16px">🔒 This portal is private to First Rehabilitation staff. Everyone signs in with their own password.</div>
+       `:`
+       <h2>Can't reach the sign-in service</h2>
+       <p class="sub">The portal couldn't connect to its secure login server. Check your internet connection and refresh the page.</p>
+       <button class="btn-full" onclick="location.reload()">Try again</button>
+       `}
      </div>
    </div></div>`;
 }
@@ -870,6 +863,7 @@ async function afterAuthEnter(){
   try{ const rows=await cloudGet(); if(rows){ DB=rows; normalizeDB(); await save(true); } CLOUD=true; LOCKED=false; }catch(e){}
   const me=empByEmail(AUTH_EMAIL);
   if(!me){ return {ok:false,msg:"That login isn't linked to a staff profile yet. Ask Nick to add your email to your profile."}; }
+  if(!me.hasLogin){ me.hasLogin=true; try{ await save(true); }catch(e){} }   // persist enrollment so admin sees who's set up
   SESSION=me.id; TAB=""; const ys=allYears(); YEAR=ys.includes(2026)?2026:ys[0]; calMonth=new Date(YEAR,0,1);
   return {ok:true};
 }
@@ -912,7 +906,6 @@ async function doEnroll(){
     msg.className="auth-msg err"; btn.disabled=false;
   }
 }
-function demoEnter(){ SESSION=$("#demoSel").value; TAB=""; const ys=allYears(); YEAR=ys.includes(2026)?2026:ys[0]; calMonth=new Date(YEAR,0,1); render(); window.scrollTo(0,0); }
 
 /* ----- Forgot password ----- */
 function showForgot(){
@@ -1422,20 +1415,15 @@ function exportPayrollCSV(){
 function openSecurity(){
   const enrolled=(DB.employees||[]).filter(e=>e.hasLogin).length;
   const total=(DB.employees||[]).filter(e=>e.active!==false).length;
-  const on=authRequired();
   openModal(`<h3>🔒 Login &amp; security</h3><div class="body">
-    <p class="sub" style="margin-top:0">Give every person their own private password. Passwords are handled by the login system and stored securely — never inside the app's data.</p>
-    <div class="sec-status ${CLOUD?"ok":"warn"}">${CLOUD?"☁️ Connected to your backend":"⚠︎ Not connected to the backend yet — deploy first, then set this up"}</div>
-    <div class="sec-step"><b>Step 1 — Everyone sets a password.</b> Share your portal link. Each person opens it, taps <i>"First time here,"</i> picks their name, and creates a password. So far <b>${enrolled} of ${total}</b> have done this.</div>
-    <div class="sec-step"><b>Step 2 — Require login.</b> Once the team is set up, turn this on. The quick-access picker disappears and everyone must sign in with their password.
-      <label class="switch-row" style="margin-top:8px"><span><b>Require everyone to sign in</b><small>${on?"On — passwords required":"Off — quick-access picker still available"}</small></span><input type="checkbox" id="sec_req" ${on?"checked":""} onchange="toggleAuthReq(this.checked)"></label></div>
-    <div class="sec-step"><b>Step 3 — Lock the database (most important).</b> This is what actually stops anyone without a login from reading the data. In Supabase → SQL Editor, run the lock-down script I gave you (<code>First_Rehab_Lockdown.sql</code>), and in Authentication → Providers turn <i>off</i> new sign-ups once everyone's enrolled.</div>
-    <div class="round-hint">Locked out later? In Supabase you can always re-run the original setup script to reopen access. Nothing is ever lost.</div>
+    <p class="sub" style="margin-top:0">Every person has their own private password. Passwords are handled by Supabase Auth and stored securely — never inside the app's data.</p>
+    <div class="sec-status ${CLOUD?"ok":"warn"}">${CLOUD?"☁️ Connected & locked — only signed-in staff can read or change the data":"⚠︎ Not connected to the backend right now"}</div>
+    <div class="sec-step"><b>Login is required for everyone.</b> There is no passwordless quick-access. Anyone opening the portal must sign in, or tap <i>"First time here"</i> to create their password. So far <b>${enrolled} of ${total}</b> have set theirs up.</div>
+    <div class="sec-step"><b>Database is locked down.</b> The data is protected by row-level security — a person must be signed in for the app to read or write anything. Visiting the link without a login shows only the sign-in screen.</div>
+    <div class="sec-step"><b>Emails are live.</b> Password resets ("Forgot your password?") and sign-up confirmations are sent from your Resend-connected domain.</div>
+    <div class="sec-step"><b>Closing enrollment.</b> Once everyone has a password, you can turn <i>off</i> new sign-ups in Supabase → Authentication → Providers → Email, so only existing staff can sign in.</div>
+    <div class="round-hint">Need to add someone later? Add them under Employees with their email, then have them tap "First time here" to set a password.</div>
   </div><div class="foot"><button class="btn" onclick="closeModal()">Done</button></div>`);
-}
-function toggleAuthReq(on){
-  DB.clinic=DB.clinic||{}; DB.clinic.authRequired=!!on; save(true);
-  flash(on?"Login now required for everyone":"Quick-access picker re-enabled");
 }
 function viewEmployees(v){
   const emps=DB.employees.slice().sort((a,b)=>(a.active===b.active?a.name.localeCompare(b.name):(a.active?-1:1)));
