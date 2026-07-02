@@ -368,6 +368,56 @@
 
   /* ---------- POLISH ---------- */
   *{-webkit-tap-highlight-color:transparent}
+  /* ---------- DIRECT MESSAGES ---------- */
+  .chat-list{display:flex;flex-direction:column;gap:10px}
+  .chat-item{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:var(--white);border-radius:14px;padding:12px 14px;cursor:pointer;width:100%}
+  .chat-item:hover{border-color:var(--coral)}
+  .chat-item .avatar{width:42px;height:42px;font-size:15px}
+  .ci-mid{flex:1;min-width:0}
+  .ci-prev{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .ci-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .ci-time{color:var(--muted);font-size:11.5px;white-space:nowrap}
+  .ci-unread{background:var(--coral);color:#3a2312;font-weight:800;font-size:11.5px;border-radius:10px;padding:1px 8px}
+  .chat-thread{padding:0;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 260px);min-height:420px}
+  .chat-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--white)}
+  .chat-sub{font-size:11.5px;color:var(--muted)}
+  .chat-scroll{flex:1;overflow-y:auto;padding:16px 14px;background:#faf6ec;display:flex;flex-direction:column;gap:8px}
+  .bubble-row{display:flex}
+  .bubble-row.mine{justify-content:flex-end}
+  .bubble{max-width:78%;background:var(--white);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:14.5px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+  .bubble-row.mine .bubble{background:var(--teal);color:var(--cream);border:none;border-radius:14px 14px 4px 14px}
+  .bubble .bt{font-size:10px;opacity:.65;margin-top:4px;text-align:right}
+  .chat-empty{color:var(--muted);text-align:center;margin:auto;font-size:14px}
+  .chat-inputrow{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--white)}
+  .chat-inputrow input{flex:1;border:1px solid var(--line);border-radius:22px;padding:11px 16px;font-size:15px}
+  .chat-inputrow input:focus{outline:2px solid var(--coral);outline-offset:-1px}
+  .chat-send{background:var(--coral);border:none;border-radius:50%;width:44px;height:44px;font-size:17px;color:#3a2312;flex:none}
+
+  /* ---------- MOBILE APP NAV ---------- */
+  .bottom-nav{display:none}
+  .more-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .more-tile{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px 8px;font-weight:600;font-size:13px;color:var(--ink);cursor:pointer}
+  .more-tile span{font-size:24px}
+  @media(max-width:740px){
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;background:var(--white);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(14,58,71,.10);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+    .bottom-nav button{flex:1;background:none;border:none;font-size:10.5px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;position:relative;cursor:pointer}
+    .bottom-nav button.on{color:var(--teal)}
+    .bottom-nav .bn-ico{font-size:21px;line-height:1}
+    .bottom-nav .bn-dot{position:absolute;top:-2px;right:calc(50% - 20px);background:var(--warn);color:#fff;font-size:9.5px;font-weight:800;border-radius:8px;padding:1px 5px}
+    .tabbar{display:none}
+    .wrap{padding-bottom:110px}
+    .chat-thread{height:calc(100vh - 300px);min-height:340px}
+    header.app .signout{display:none}          /* lives in the More sheet on phones */
+    .head-in{padding:10px 14px;gap:10px}
+    .brand-logo{height:24px}
+  }
+  @media(max-width:640px){
+    .overlay{align-items:flex-end;padding:0}
+    .modal{max-width:100%;border-radius:20px 20px 0 0;max-height:92vh}
+    input,select,textarea,.inp{font-size:16px!important}
+    .btn:not(.tiny):not(.sm){min-height:42px}
+  }
+
   @media (prefers-reduced-motion:no-preference){
     #view{animation:viewIn .28s ease both}
     @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -523,6 +573,8 @@ function normalizeDB(){
   DB.hours     = DB.hours||[];
   DB.timesheets= DB.timesheets||[];
   DB.announcements = DB.announcements||[];
+  DB.messages = DB.messages||[];
+  DB.readmarks = DB.readmarks||[];
   DB.shirtRequests = DB.shirtRequests||[];
   DB.feedback  = DB.feedback||[];
   DB.media     = DB.media||[];
@@ -617,7 +669,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media"];
+const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
   try{ BASE=JSON.parse(JSON.stringify(obj)); }catch(e){ BASE=null; }
@@ -721,6 +773,8 @@ async function save(silent){
 async function cloudRefresh(){
   if(!SB) return;
   if($("#overlay") && $("#overlay").classList.contains("on")) return;   // don't interrupt an open form
+  const ae=document.activeElement;
+  if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;        // don't interrupt someone typing
   if(!CLOUD){                                     // connection dropped earlier — quietly reconnect and fold local edits back in
     if(!AUTHED) return;
     try{ const remote=await cloudGet(); if(remote){ DB=await reconcileLocal(remote); normalizeDB(); CLOUD=true; await save(true); render(); } }catch(e){}
@@ -780,6 +834,44 @@ async function installApp(){
     <div class="sec-step"><b>Android:</b> tap the <b>⋮</b> menu in Chrome and choose <b>"Add to Home screen"</b> (or <b>"Install app"</b>).</div>
     <div class="sec-step"><b>Computer:</b> in Chrome or Edge, click the small <b>install icon</b> at the right end of the address bar.</div>
   </div><div class="foot"><button class="btn" onclick="closeModal()">Got it</button></div>`);
+}
+
+/* ===== Push notifications to phones ===== */
+const VAPID_PUBLIC="BHu-Bpph7PxZe2LvqB3JxM2fj38Q5NMYbF2qZPPTKR09zeaJlbQ2ztyxT4h5EHo0OWuq7Jd-59XUNsT_-d6PyTs";
+function urlB64ToU8(s){ const pad="=".repeat((4-s.length%4)%4); const b=atob((s+pad).replace(/-/g,"+").replace(/_/g,"/")); const a=new Uint8Array(b.length); for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return a; }
+function pushSupported(){ return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+async function enablePush(){
+  if(IS_IOS && !isStandalone()){
+    openModal(`<h3>📲 One quick step first</h3><div class="body"><p class="sub" style="margin-top:0">On iPhone, notifications only work once the app is on your home screen.</p>
+      <div class="sec-step">Tap the <b>Share</b> button in Safari → <b>"Add to Home Screen"</b> → open the app from its new icon → turn notifications on there.</div>
+    </div><div class="foot"><button class="btn" onclick="closeModal()">Got it</button></div>`);
+    return false;
+  }
+  if(!pushSupported()){ flash("This browser doesn't support push notifications"); return false; }
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted"){ flash("Notifications weren't allowed"); return false; }
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToU8(VAPID_PUBLIC)});
+    if(SB && AUTH_EMAIL) await SB.from("push_subs").upsert({endpoint:sub.endpoint,email:AUTH_EMAIL,sub:sub.toJSON()},{onConflict:"endpoint"});
+    return true;
+  }catch(e){ flash("Couldn't turn on notifications"); return false; }
+}
+async function disablePush(){
+  try{ const reg=await navigator.serviceWorker.ready; const sub=await reg.pushManager.getSubscription();
+    if(sub){ if(SB) await SB.from("push_subs").delete().eq("endpoint",sub.endpoint); await sub.unsubscribe(); } }catch(e){}
+}
+/* fire-and-forget: tell the server to push to the right people (recipients are decided server-side) */
+async function sendPushNotify(payload){
+  try{
+    if(!SB) return;
+    const {data}=await SB.auth.getSession(); const tok=data&&data.session&&data.session.access_token;
+    if(!tok) return;
+    fetch(SB_URL+"/functions/v1/notify",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok,"apikey":SB_JWT},
+      body:JSON.stringify(payload)}).catch(()=>{});
+  }catch(e){}
 }
 
 /* ============= HELPERS ============= */
@@ -879,10 +971,10 @@ function render(){
   const me=emp(SESSION);
   const admin=me.role==="admin";
   const tabs = admin
-    ? [["dash","Dashboard"],["timesheets","Timesheets"],["timeoff","Time Off"],["payroll","Payroll"],["calendar","Team Calendar"],["photos","Photos"],["employees","Employees"],["inbox","Inbox"]]
+    ? [["dash","Dashboard"],["timesheets","Timesheets"],["timeoff","Time Off"],["payroll","Payroll"],["calendar","Team Calendar"],["chat","Messages"],["photos","Photos"],["employees","Employees"],["inbox","Inbox"]]
     : (me.salaried
-        ? [["me","My Overview"],["mytime","My Time Off"],["calendar","Team Calendar"],["photos","Photos"]]
-        : [["me","My Overview"],["timesheet","My Timesheet"],["mytime","My Time Off"],["calendar","Team Calendar"],["photos","Photos"]]);
+        ? [["me","My Overview"],["mytime","My Time Off"],["calendar","Team Calendar"],["chat","Messages"],["photos","Photos"]]
+        : [["me","My Overview"],["timesheet","My Timesheet"],["mytime","My Time Off"],["calendar","Team Calendar"],["chat","Messages"],["photos","Photos"]]);
   if(!tabs.find(t=>t[0]===TAB)) TAB=tabs[0][0];
   const ys=allYears();
   $("#root").innerHTML=`
@@ -900,12 +992,13 @@ function render(){
      <button class="bell" onclick="openNotify()" title="Notifications & email" aria-label="Notifications">🔔</button>
      <button class="signout" onclick="signOut()">Sign out</button>
    </div></header>
-   <div class="tabbar"><nav class="tabs">${tabs.map(([id,l])=>`<button class="tab ${TAB===id?"active":""}" onclick="setTab('${id}')">${l}${id==="timeoff"&&pendingCount()?` · ${pendingCount()}`:""}${id==="inbox"&&inboxCount()?` · ${inboxCount()}`:""}</button>`).join("")}</nav></div>
+   <div class="tabbar"><nav class="tabs">${tabs.map(([id,l])=>`<button class="tab ${TAB===id?"active":""}" onclick="setTab('${id}')">${l}${id==="timeoff"&&pendingCount()?` · ${pendingCount()}`:""}${id==="inbox"&&inboxCount()?` · ${inboxCount()}`:""}${id==="chat"&&chatUnread()?` · ${chatUnread()}`:""}</button>`).join("")}</nav></div>
    <div class="wrap" id="view"></div>
+   ${bottomNavHTML(admin,me)}
    <footer class="app-foot"><div class="ff"><img src="${LOGO}" alt="First Rehabilitation"><span>Team Time Portal</span></div><div class="r">${CLINIC.addr1} · ${CLINIC.addr2}</div></footer>`;
   const v=$("#view");
   ({dash:viewAdminDash,timeoff:viewAdminTimeoff,payroll:viewPayroll,calendar:viewCalendar,employees:viewEmployees,timesheets:viewAdminTimesheets,inbox:viewInbox,photos:viewPhotos,
-    me:viewMyOverview,myhours:viewMyHours,mytime:viewMyTime,timesheet:viewMyTimesheet}[TAB])(v);
+    me:viewMyOverview,myhours:viewMyHours,mytime:viewMyTime,timesheet:viewMyTimesheet,chat:viewChat}[TAB])(v);
 }
 function setTab(t){TAB=t;if(t==="calendar"){const n=new Date();calMonth=new Date(n.getFullYear(),n.getMonth(),1);}render();window.scrollTo(0,0);}
 function signOut(){ if(AUTHED){ authSignOut(); } SESSION=null;TAB="";render();window.scrollTo(0,0);}
@@ -1078,6 +1171,89 @@ async function doRecovery(){
   }catch(e){ msg.textContent=e.message||"Couldn't save the password."; msg.className="auth-msg err"; btn.disabled=false; }
 }
 
+/* ================= DIRECT MESSAGES ================= */
+let CHAT_WITH=null, CHAT_DRAFT="";
+function rmFor(mine,other){ return (DB.readmarks||[]).find(r=>r.id===mine+"|"+other); }
+function chatUnreadFrom(other){ const rm=rmFor(SESSION,other); const since=rm?rm.ts:0; return (DB.messages||[]).filter(m=>m.from===other&&m.to===SESSION&&m.ts>since).length; }
+function chatUnread(){ if(!SESSION||!DB)return 0; const others=new Set((DB.messages||[]).filter(m=>m.to===SESSION).map(m=>m.from)); let n=0; others.forEach(o=>n+=chatUnreadFrom(o)); return n; }
+function markChatRead(other){ let rm=rmFor(SESSION,other); if(!rm){ rm={id:SESSION+"|"+other,ts:Date.now()}; DB.readmarks.push(rm); } else rm.ts=Date.now(); save(true); }
+function lastMsgWith(other){ const ms=(DB.messages||[]).filter(m=>(m.from===SESSION&&m.to===other)||(m.from===other&&m.to===SESSION)); return ms.length?ms.reduce((a,b)=>a.ts>b.ts?a:b):null; }
+function openChat(other){ CHAT_WITH=other; CHAT_DRAFT=""; markChatRead(other); render(); setTimeout(()=>{ const i=$("#chatInput"); if(i)i.focus(); },60); }
+function sendDM(){
+  const inp=$("#chatInput"); const text=(inp?inp.value:"").trim(); if(!text||!CHAT_WITH)return;
+  DB.messages.push({id:uid("m"),from:SESSION,to:CHAT_WITH,text,ts:Date.now()});
+  CHAT_DRAFT="";
+  markChatRead(CHAT_WITH);   // also saves everything
+  const who=emp(CHAT_WITH);
+  if(who&&who.email) sendPushNotify({kind:"dm",toEmail:who.email,title:"💬 "+emp(SESSION).name,body:text.slice(0,140),url:"/"});
+  render(); setTimeout(()=>{ const i=$("#chatInput"); if(i)i.focus(); },30);
+}
+function fmtMsgTime(ts){ const d=new Date(ts), now=new Date();
+  return d.toDateString()===now.toDateString()
+    ? d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})
+    : d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+", "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }
+function viewChat(v){
+  if(CHAT_WITH){
+    const other=emp(CHAT_WITH);
+    if(!other){ CHAT_WITH=null; viewChat(v); return; }
+    if(chatUnreadFrom(CHAT_WITH)) markChatRead(CHAT_WITH);   // arriving messages are read while the thread is open
+    const ms=(DB.messages||[]).filter(m=>(m.from===SESSION&&m.to===CHAT_WITH)||(m.from===CHAT_WITH&&m.to===SESSION)).sort((a,b)=>a.ts-b.ts);
+    v.innerHTML=`
+     <div class="chat-thread card">
+       <div class="chat-head">
+         <button class="btn ghost sm" onclick="CHAT_WITH=null;render()" aria-label="Back">←</button>
+         <div class="avatar">${other.photo?`<img src="${other.photo}" alt="">`:initials(other.name)}</div>
+         <div><b>${esc(other.name)}</b><div class="chat-sub">${other.role==="admin"?"Admin":"Team member"}</div></div>
+       </div>
+       <div class="chat-scroll" id="chatScroll">
+         ${ms.length?ms.map(m=>`<div class="bubble-row ${m.from===SESSION?"mine":""}"><div class="bubble">${esc(m.text)}<div class="bt">${fmtMsgTime(m.ts)}</div></div></div>`).join(""):`<div class="chat-empty">Say hi 👋 — messages are private between the two of you.</div>`}
+       </div>
+       <div class="chat-inputrow">
+         <input id="chatInput" placeholder="Message ${esc(other.first)}…" value="${esc(CHAT_DRAFT)}" oninput="CHAT_DRAFT=this.value" onkeydown="if(event.key==='Enter')sendDM()" autocomplete="off">
+         <button class="chat-send" onclick="sendDM()" aria-label="Send">➤</button>
+       </div>
+     </div>`;
+    const box=$("#chatScroll"); if(box)box.scrollTop=box.scrollHeight;
+    return;
+  }
+  const people=DB.employees.filter(e=>e.active!==false&&e.id!==SESSION).slice()
+    .sort((a,b)=>{ const la=lastMsgWith(a.id),lb=lastMsgWith(b.id); return ((lb?lb.ts:0)-(la?la.ts:0))||a.name.localeCompare(b.name); });
+  v.innerHTML=`
+   <div class="section-title"><h2>Messages</h2><span class="hint">Private one-on-one messages with anyone on the team.</span></div>
+   <div class="chat-list">
+   ${people.map(p=>{ const lm=lastMsgWith(p.id), un=chatUnreadFrom(p.id);
+     return `<button class="chat-item" onclick="openChat('${p.id}')">
+       <div class="avatar">${p.photo?`<img src="${p.photo}" alt="">`:initials(p.name)}</div>
+       <div class="ci-mid"><b>${esc(p.name)}</b><div class="ci-prev">${lm?(lm.from===SESSION?"You: ":"")+esc(lm.text.slice(0,60)):"No messages yet"}</div></div>
+       <div class="ci-right">${lm?`<span class="ci-time">${fmtMsgTime(lm.ts)}</span>`:""}${un?`<span class="ci-unread">${un}</span>`:""}</div>
+     </button>`; }).join("")}
+   </div>`;
+}
+
+/* ===== Mobile bottom navigation ===== */
+function bottomNavHTML(admin,me){
+  const items = admin
+    ? [["dash","🏠","Home"],["timesheets","🕒","Sheets"],["timeoff","🌴","Time off"],["chat","💬","Messages"]]
+    : (me.salaried
+       ? [["me","🏠","Home"],["mytime","🌴","Time off"],["calendar","📅","Calendar"],["chat","💬","Messages"]]
+       : [["me","🏠","Home"],["timesheet","🕒","Timesheet"],["mytime","🌴","Time off"],["chat","💬","Messages"]]);
+  const un=chatUnread(), pend=admin?pendingCount():0;
+  return `<nav class="bottom-nav">${items.map(([id,ico,lbl])=>`<button class="${TAB===id?"on":""}" onclick="setTab('${id}')"><span class="bn-ico">${ico}</span>${lbl}${id==="chat"&&un?`<span class="bn-dot">${un}</span>`:""}${id==="timeoff"&&pend?`<span class="bn-dot">${pend}</span>`:""}</button>`).join("")}
+    <button onclick="openMoreNav()"><span class="bn-ico">⋯</span>More</button></nav>`;
+}
+function openMoreNav(){
+  const me=emp(SESSION), admin=me.role==="admin";
+  const rest = admin
+    ? [["payroll","💵","Payroll"],["calendar","📅","Team Calendar"],["photos","📷","Photos"],["employees","👥","Employees"],["inbox","📥","Inbox"]]
+    : (me.salaried?[["photos","📷","Photos"]]:[["calendar","📅","Team Calendar"],["photos","📷","Photos"]]);
+  openModal(`<h3>More</h3><div class="body"><div class="more-grid">
+    ${rest.map(([id,ico,lbl])=>`<button class="more-tile" onclick="closeModal();setTab('${id}')"><span>${ico}</span>${lbl}</button>`).join("")}
+    <button class="more-tile" onclick="closeModal();openProfile()"><span>👤</span>My details</button>
+    <button class="more-tile" onclick="closeModal();openNotify()"><span>🔔</span>Notifications</button>
+    <button class="more-tile" onclick="closeModal();signOut()"><span>🚪</span>Sign out</button>
+  </div></div><div class="foot"><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+}
+
 /* ================= ADMIN VIEWS ================= */
 function viewAdminDash(v){
   const active=DB.employees.filter(e=>e.active).sort((a,b)=>a.name.localeCompare(b.name));
@@ -1170,7 +1346,8 @@ function saveAnnounce(editId){
   const t24=$("#an_time")?$("#an_time").value:""; const time=t24?to12(t24):"";
   const disp=date?toDate(date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
   if(editId){ const a=DB.announcements.find(x=>x.id===editId); if(a){ a.title=title; a.body=body; a.date=date; a.time=time; a.dateStr=disp; } flash("Announcement updated"); }
-  else { DB.announcements.push({id:uid("an"),title,body,author:emp(SESSION).name,ts:Date.now(),date,time,dateStr:disp}); flash("Announcement posted"); }
+  else { DB.announcements.push({id:uid("an"),title,body,author:emp(SESSION).name,ts:Date.now(),date,time,dateStr:disp}); flash("Announcement posted");
+    sendPushNotify({kind:"announce",title:"📣 "+title,body:(body||"").slice(0,140),url:"/"}); }
   save();closeModal();render();
 }
 function delAnnounce(id){ if(!confirm("Delete this announcement?"))return; DB.announcements=DB.announcements.filter(a=>a.id!==id); save();render(); }
@@ -1391,22 +1568,29 @@ function delEvent(id){ if(!confirm("Remove this event?"))return; DB.events=DB.ev
 function notifStatus(){ return (typeof Notification!=="undefined")?Notification.permission:"unsupported"; }
 function openNotify(){
   const me=emp(SESSION); const st=notifStatus();
-  openModal(`<h3>Notifications &amp; email 🔔</h3><div class="body">
-    <p class="sub" style="margin-top:0">Choose how ${esc(me.first)} hears about announcements, time-off approvals, and timesheet reminders.</p>
-    <label class="switch-row"><span><b>Email me</b><small>${me.email?"Sent to "+esc(me.email):"Add your email in My details first"}</small></span><input type="checkbox" id="nt_email" ${me.notifyEmail!==false?"checked":""}></label>
-    <label class="switch-row"><span><b>Text me (SMS)</b><small>${me.phone?"Sent to "+esc(me.phone):"Add your cell in My details first"}</small></span><input type="checkbox" id="nt_sms" ${me.notifySms?"checked":""}></label>
-    <label class="switch-row"><span><b>Push notifications</b><small>${st==="granted"?"Enabled on this device ✓":st==="denied"?"Blocked — re-enable in your browser settings":"Pop-ups on this device"}</small></span><input type="checkbox" id="nt_push" ${me.notifyPush&&st==="granted"?"checked":""} ${st==="denied"?"disabled":""}></label>
+  openModal(`<h3>Notifications 🔔</h3><div class="body">
+    <p class="sub" style="margin-top:0">Get a ping on this device for announcements, direct messages, and time-off updates — even when the app is closed.</p>
+    <label class="switch-row"><span><b>Push notifications</b><small>${st==="granted"?"Enabled on this device ✓":st==="denied"?"Blocked — re-enable in your browser/app settings":"Announcements, messages & time-off updates"}</small></span><input type="checkbox" id="nt_push" ${me.notifyPush&&st==="granted"?"checked":""} ${st==="denied"?"disabled":""}></label>
     ${st==="granted"?`<button class="btn ghost" onclick="testNotify()">Send a test notification</button>`:""}
-    <div class="round-hint">Preferences are saved now. Email, text &amp; push <b>delivery</b> switch on automatically once the app is connected to its backend. <button class="btn sm ghost" style="margin-top:6px" onclick="closeModal();openProfile()">Edit my email &amp; cell →</button></div>
+    ${IS_IOS&&!isStandalone()?`<div class="round-hint">📲 On iPhone, add the app to your home screen first (Share → Add to Home Screen) — then notifications can switch on.</div>`:""}
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveNotify()">Save</button></div>`);
 }
 async function saveNotify(){
-  const me=emp(SESSION); me.notifyEmail=$("#nt_email").checked; me.notifySms=$("#nt_sms")&&$("#nt_sms").checked; const wantPush=$("#nt_push")&&$("#nt_push").checked;
-  if(wantPush && notifStatus()!=="granted"){ try{ const p=await Notification.requestPermission(); if(p!=="granted"){ me.notifyPush=false; save(); closeModal(); render(); flash("Push permission wasn't granted"); return; } }catch(e){} }
-  me.notifyPush = !!wantPush && notifStatus()==="granted";
-  save(); closeModal(); render(); flash("Notification preferences saved");
+  const me=emp(SESSION); const wantPush=$("#nt_push")&&$("#nt_push").checked;
+  if(wantPush){
+    const ok=await enablePush();
+    me.notifyPush=ok;
+    save(true); closeModal(); render();
+    if(ok) flash("Notifications are on for this device 🔔");
+    return;
+  }
+  me.notifyPush=false; await disablePush();
+  save(true); closeModal(); render(); flash("Notifications turned off on this device");
 }
-function testNotify(){ try{ new Notification("First Rehab",{body:"Notifications are working 🎉"}); }catch(e){ flash("Couldn't show a test notification"); } }
+function testNotify(){
+  try{ navigator.serviceWorker.ready.then(reg=>reg.showNotification("First Rehab",{body:"Notifications are working 🎉",icon:"/icons/icon-192.png"})); }
+  catch(e){ try{ new Notification("First Rehab",{body:"Notifications are working 🎉"}); }catch(e2){ flash("Couldn't show a test notification"); } }
+}
 function cardFor(e){
   const used=ptoUsed(e.id,YEAR),base=+e.vacAllot||0,earned=earnedVac(e.id,YEAR),allot=base+earned,pct=allot>0?Math.min(100,used/allot*100):(used>0?100:0),over=allot>0&&used>allot,left=allot-used;
   return `<div class="card emp-card">
@@ -1759,8 +1943,10 @@ function saveRequest(){
   if(!date){flash("Enter a valid date");return;} if(isNaN(hours)){flash("Enter hours");return;}
   DB.timeoff.push({id:uid("t"),empId:SESSION,date,hours,type,end,note,status:"pending"});
   const y=yearOf(date);if(y)YEAR=y;save();closeModal();render();flash("Request submitted");
+  sendPushNotify({kind:"timeoff",title:"🌴 Time-off request",body:`${emp(SESSION).name}: ${date}${end?" – "+end:""} (${round(hours)}h ${type})`,url:"/"});
 }
-function approve(id){const t=DB.timeoff.find(x=>x.id===id);if(t){t.status="approved";save();render();flash("Approved");}}
+function approve(id){const t=DB.timeoff.find(x=>x.id===id);if(t){t.status="approved";save();render();flash("Approved");
+  const who=emp(t.empId); if(who&&who.email) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"✅ Time off approved",body:`${t.date}${t.end?" – "+t.end:""} (${round(t.hours)}h ${t.type}) was approved`,url:"/"});}}
 
 /* hours (admin + employee) */
 function openHours(editId){ hoursModal(editId,null); }
