@@ -726,7 +726,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=10;   // bumped on breaking sync changes; the database rejects writes from older app code
+const APP_VER=11;   // bumped on breaking sync changes; the database rejects writes from older app code
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1064,7 +1064,7 @@ function vacUsed(id,y){return DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)=
 /* PTO hours actually used (excludes unpaid / company holidays) — only meaningful for PTO-eligible staff */
 function ptoUsed(id,y){return DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===(y||YEAR)&&t.status==="approved"&&t.type!=="Unpaid"&&t.type!=="Holiday").reduce((s,t)=>s+(+t.hours||0),0);}
 function otStats(id,y){const r=DB.hours.filter(h=>h.empId===id&&(yearOf(h.end)||yearOf(h.start))===y);const e=r.reduce((s,h)=>s+(+h.ot||0),0),u=r.reduce((s,h)=>s+(+h.otUsed||0),0);return{earned:e,used:u,bal:e-u};}
-/* overtime earned on timesheets (over 40 worked / week) — for us this becomes accrued VACATION, credited on approval */
+/* overtime earned on timesheets (over 80 worked / pay period) — for us this becomes accrued VACATION, credited on approval */
 function tsOTYear(id,y){ return DB.timesheets.filter(t=>t.empId===id && yearOf(t.start)===y).reduce((s,t)=>s+periodOT(t,true),0); }
 function earnedVac(id,y){ const e=emp(id); if(!e||!e.getsPto) return 0; return DB.timesheets.filter(t=>t.empId===id && t.approvedBy && yearOf(t.start)===(y||YEAR)).reduce((s,t)=>s+periodOT(t,true),0); }
 /* banked overtime = manual starting balance + OT earned on approved timesheets — all counts toward PTO */
@@ -1883,7 +1883,7 @@ function viewPayroll(v){
      <tbody>${body||`<tr><td colspan="${cols.length+1}" class="empty">No hourly staff.</td></tr>`}</tbody>
      <tfoot><tr><td>Totals</td>${cols.map(c=>`<td class="num ${c==='total'?'grand':''}">${sum(c)} h</td>`).join("")}</tr></tfoot>
    </table></div>
-   <p class="mini-hint">Tap a row to open and edit that person's timesheet. Times are rounded to the nearest quarter-hour. OT is hours over 40 in a week. For PTO-eligible staff it's added to their PTO allowance when you approve the sheet.</p>`;
+   <p class="mini-hint">Tap a row to open and edit that person's timesheet. Times are rounded to the nearest quarter-hour. OT is hours worked over 80 in the pay period. For PTO-eligible staff it's added to their banked time when you approve the sheet.</p>`;
 }
 function openAdminSheetFrom(id){ TAB="timesheets"; tsDetailEmp=id; render(); window.scrollTo(0,0); }
 function exportPayrollCSV(){
@@ -2330,7 +2330,7 @@ function renderTimesheet(v, empId, isAdmin){
      <div class="tm"><div class="tm-k">☀️ Morning</div><div class="tm-v">${round(am)}<small>h</small></div></div>
      <div class="tm"><div class="tm-k">🌤️ Afternoon</div><div class="tm-v">${round(pm)}<small>h</small></div></div>
      ${note>0?`<div class="tm"><div class="tm-k">📝 Notes</div><div class="tm-v">${round(note)}<small>h</small></div></div>`:""}
-     ${ot>0?`<div class="tm ot"><div class="tm-k">🌴 Overtime</div><div class="tm-v">${round(ot)}<small>h</small></div><div class="tm-sub">${getsPTO(empId)?(ts.approvedBy?"added to PTO":"→ PTO on approve"):"over 40/week"}</div></div>`:""}
+     ${ot>0?`<div class="tm ot"><div class="tm-k">🌴 Overtime</div><div class="tm-v">${round(ot)}<small>h</small></div><div class="tm-sub">${getsPTO(empId)?(ts.approvedBy?"banked":"→ banked on approve"):"over 80/period"}</div></div>`:""}
    </div>`;
   v.innerHTML=`
    <div class="section-title" style="margin-bottom:8px">
@@ -2363,9 +2363,10 @@ function amHours(ts,R){ return kindHours(ts,"am",R); }
 function pmHours(ts,R){ return kindHours(ts,"pm",R); }
 function noteHours(ts,R){ return kindHours(ts,"note",R); }
 function hasNotes(ts){ return ts.days.some(d=>segsOf(d,"note").length); }
-/* weekly overtime: anything over 40 worked hours in a 7-day week */
+/* helper kept for reference: worked hours in one 7-day week of the period */
 function weekWorked(ts,wk,R){ const a=wk*7; return ts.days.slice(a,a+7).reduce((s,d)=>s+dayWorked(d,R),0); }
-function periodOT(ts,R){ return Math.max(0,weekWorked(ts,0,R)-40)+Math.max(0,weekWorked(ts,1,R)-40); }
+/* overtime = hours actually worked beyond 80 in the two-week pay period → banked time */
+function periodOT(ts,R){ return Math.max(0, tsWorked(ts,R) - 80); }
 function tsHasEntries(ts){ return ts.days.some(d=>(d.segs||[]).some(s=>s.in&&s.out) || (+d.vac||0)>0); }
 function statusPill(ts){
   return ts.approvedBy?`<span class="st-pill st-approved">✓ Approved</span>`
