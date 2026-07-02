@@ -922,16 +922,49 @@ async function disablePush(){
   try{ const reg=await navigator.serviceWorker.ready; const sub=await reg.pushManager.getSubscription();
     if(sub){ if(SB) await SB.from("push_subs").delete().eq("endpoint",sub.endpoint); await sub.unsubscribe(); } }catch(e){}
 }
-/* fire-and-forget: tell the server to push to the right people (recipients are decided server-side) */
+/* tell the server to push to the right people (recipients are decided server-side); resolves to the delivered count */
 async function sendPushNotify(payload){
   try{
-    if(!SB) return;
+    if(!SB) return null;
     const {data}=await SB.auth.getSession(); const tok=data&&data.session&&data.session.access_token;
-    if(!tok) return;
-    fetch(SB_URL+"/functions/v1/notify",{method:"POST",
+    if(!tok) return null;
+    const r=await fetch(SB_URL+"/functions/v1/notify",{method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok,"apikey":SB_JWT},
-      body:JSON.stringify(payload)}).catch(()=>{});
+      body:JSON.stringify(payload)});
+    const out=await r.json().catch(()=>null);
+    return out&&out.ok?out.sent:null;
+  }catch(e){ return null; }
+}
+/* keep this device's subscription alive without prompting (permission already granted) */
+async function enablePushSilent(){
+  try{
+    if(!pushSupported()||Notification.permission!=="granted") return;
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToU8(VAPID_PUBLIC)});
+    if(SB&&AUTH_EMAIL) await SB.from("push_subs").upsert({endpoint:sub.endpoint,email:AUTH_EMAIL,sub:sub.toJSON()},{onConflict:"endpoint"});
   }catch(e){}
+}
+/* one-time friendly ask right after login, on devices where push can actually work */
+async function maybeAskPush(){
+  try{
+    if(!SESSION||!AUTHED||!pushSupported()) return;
+    if(Notification.permission==="granted"){ const me=emp(SESSION); if(me&&me.notifyPush!==false) enablePushSilent(); return; }
+    if(Notification.permission!=="default") return;   // blocked — respect it
+    const r=await LOCAL.get(KEY+"_pushasked"); if(r&&r.value) return;
+    await LOCAL.set(KEY+"_pushasked","1");
+    if($("#overlay")&&$("#overlay").classList.contains("on")) return;
+    openModal(`<h3>🔔 Turn on notifications?</h3><div class="body">
+      <p class="sub" style="margin-top:0">Get a ping on this device for announcements, direct messages, and time-off updates — even when the app is closed.</p>
+      <div class="round-hint">You can change this anytime from the 🔔 bell up top.</div>
+    </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Not now</button>
+      <button class="btn" onclick="closeModal();quickEnablePush()">Turn on 🔔</button></div>`);
+  }catch(e){}
+}
+async function quickEnablePush(){
+  const ok=await enablePush();
+  const me=emp(SESSION); if(me){ me.notifyPush=ok; save(true); }
+  if(ok) flash("Notifications are on for this device 🔔");
 }
 
 /* ============= HELPERS ============= */
@@ -1126,6 +1159,7 @@ async function afterAuthEnter(){
   if(!me){ return {ok:false,msg:"That login isn't linked to a staff profile yet. Ask Nick to add your email to your profile."}; }
   if(!me.hasLogin){ me.hasLogin=true; try{ await save(true); }catch(e){} }   // persist enrollment so admin sees who's set up
   SESSION=me.id; TAB=""; const ys=allYears(); YEAR=ys.includes(2026)?2026:ys[0]; calMonth=new Date(YEAR,0,1);
+  setTimeout(maybeAskPush,900);
   return {ok:true};
 }
 async function doSignIn(){
@@ -1409,7 +1443,8 @@ function saveAnnounce(editId){
   const disp=date?toDate(date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
   if(editId){ const a=DB.announcements.find(x=>x.id===editId); if(a){ a.title=title; a.body=body; a.date=date; a.time=time; a.dateStr=disp; } flash("Announcement updated"); }
   else { DB.announcements.push({id:uid("an"),title,body,author:emp(SESSION).name,ts:Date.now(),date,time,dateStr:disp}); flash("Announcement posted");
-    sendPushNotify({kind:"announce",title:"📣 "+title,body:(body||"").slice(0,140),url:"/"}); }
+    sendPushNotify({kind:"announce",title:"📣 "+title,body:(body||"").slice(0,140),url:"/"})
+      .then(n=>{ if(n==null)return; flash(n>0?`📣 Sent to ${n} phone${n===1?"":"s"}`:"Posted — no one has notifications turned on yet"); }); }
   save();closeModal();render();
 }
 function delAnnounce(id){ if(!confirm("Delete this announcement?"))return; DB.announcements=DB.announcements.filter(a=>a.id!==id); save();render(); }
@@ -2485,6 +2520,7 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
   const withTS = DB.timesheets && DB.timesheets[0];
   tsAdminEmp = withTS ? withTS.empId : null;
   render();
+  if(SESSION&&AUTHED) setTimeout(maybeAskPush,1200);
   if(SB){
     setInterval(cloudRefresh, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) cloudRefresh(); });
