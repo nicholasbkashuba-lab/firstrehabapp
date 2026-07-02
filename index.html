@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="First Rehab">
 <meta name="description" content="First Rehabilitation team portal — timesheets, PTO, calendar, and announcements.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -761,6 +763,25 @@ function empByEmail(email){ if(!email) return null; email=(""+email).toLowerCase
 function authRequired(){ return true; }   // login is always required — no passwordless quick access
 
 
+/* ===== Installable app (add to home screen) ===== */
+let PWA_EVT=null;
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("/sw.js").catch(()=>{}); }); }
+window.addEventListener("beforeinstallprompt",(e)=>{ e.preventDefault(); PWA_EVT=e; updateInstallBtns(); });
+window.addEventListener("appinstalled",()=>{ PWA_EVT=null; updateInstallBtns(); });
+function isStandalone(){ return (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true; }
+const IS_IOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+function canInstall(){ return !isStandalone() && (PWA_EVT||IS_IOS); }
+function updateInstallBtns(){ document.querySelectorAll(".install-btn").forEach(b=>{ b.style.display=canInstall()?"":"none"; }); }
+async function installApp(){
+  if(PWA_EVT){ PWA_EVT.prompt(); try{ await PWA_EVT.userChoice; }catch(e){} PWA_EVT=null; updateInstallBtns(); return; }
+  openModal(`<h3>📲 Put the app on your phone</h3><div class="body">
+    <p class="sub" style="margin-top:0">Takes 10 seconds — after that the portal opens like any other app, with its own icon.</p>
+    <div class="sec-step"><b>iPhone / iPad:</b> tap the <b>Share</b> button (the square with the up-arrow) in Safari, scroll down, and tap <b>"Add to Home Screen."</b></div>
+    <div class="sec-step"><b>Android:</b> tap the <b>⋮</b> menu in Chrome and choose <b>"Add to Home screen"</b> (or <b>"Install app"</b>).</div>
+    <div class="sec-step"><b>Computer:</b> in Chrome or Edge, click the small <b>install icon</b> at the right end of the address bar.</div>
+  </div><div class="foot"><button class="btn" onclick="closeModal()">Got it</button></div>`);
+}
+
 /* ============= HELPERS ============= */
 const $=s=>document.querySelector(s);
 const uid=p=>p+Math.random().toString(36).slice(2,7);
@@ -875,6 +896,7 @@ function render(){
        <div><div class="nm">${esc(me.first)}</div><span class="role-badge ${admin?"role-admin":"role-emp"}">${admin?"Admin":"Employee"}</span></div>
      </div>
      <button class="cloud-badge ${CLOUD?"ok":"local"}" id="cloudBadge" onclick="showCloudInfo()" title="Sync status">${CLOUD?"☁️ Synced":"⚠︎ This device"}</button>
+     <button class="bell install-btn" onclick="installApp()" title="Install the app on this device" aria-label="Install app" style="${canInstall()?"":"display:none"}">📲</button>
      <button class="bell" onclick="openNotify()" title="Notifications & email" aria-label="Notifications">🔔</button>
      <button class="signout" onclick="signOut()">Sign out</button>
    </div></header>
@@ -927,6 +949,7 @@ function renderLogin(){
        </div>
 
        <div class="hint" style="text-align:center;margin-top:16px">🔒 This portal is private to First Rehabilitation staff. Everyone signs in with their own password.</div>
+       <button class="linkish install-btn" style="width:100%;text-align:center;${canInstall()?"":"display:none"}" onclick="installApp()">📲 Add this app to your phone</button>
        `:`
        <h2>Can't reach the sign-in service</h2>
        <p class="sub">The portal couldn't connect to its secure login server. Check your internet connection and refresh the page.</p>

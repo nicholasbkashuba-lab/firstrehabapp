@@ -1,0 +1,15 @@
+{
+  "name": "First Rehab Team Portal",
+  "short_name": "First Rehab",
+  "description": "First Rehabilitation team portal — timesheets, PTO, calendar, and announcements.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F6F1E7",
+  "theme_color": "#0E3A47",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
