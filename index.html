@@ -726,7 +726,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=11;   // bumped on breaking sync changes; the database rejects writes from older app code
+const APP_VER=12;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -828,11 +828,16 @@ async function load(){
   try{ const r=await LOCAL.get(KEY); if(r&&r.value){ DB=JSON.parse(r.value); normalizeDB(); await save(true); return; } }catch(e){}
   DB=JSON.parse(JSON.stringify(SEED)); normalizeDB(); await save(true);
 }
+function reloadForUpdate(){   // fetch the newest app code, then retry — used when the server says our tab is out of date
+  const last=+(sessionStorage.getItem("_vreload")||0);
+  if(Date.now()-last>60000){ sessionStorage.setItem("_vreload",String(Date.now())); try{flash("Updating to the latest version…");}catch(e){} setTimeout(()=>location.reload(),700); }
+}
+function isVersionError(e){ const m=(e&&(e.message||e.details||e.hint||""))+""; return /app_out_of_date/i.test(m); }
 async function save(silent){
   DB._rev=Date.now(); DB._appver=APP_VER;
   const json=JSON.stringify(DB);
   try{ await LOCAL.set(KEY,json); }catch(e){}
-  if(SB && CLOUD){ try{ await cloudSet(DB); }catch(e){ CLOUD=false; updateCloudBadge(); } }
+  if(SB && CLOUD){ try{ await cloudSet(DB); }catch(e){ CLOUD=false; updateCloudBadge(); if(isVersionError(e)){ reloadForUpdate(); return; } if(!silent) flash("Couldn't reach the cloud — saved on this device, will sync when back online"); } }
   updateCloudBadge();
   if(!silent) flash(CLOUD?"Saved to the cloud ☁️":"Saved on this device");
 }
@@ -852,11 +857,7 @@ async function cloudRefresh(){
   }
   try{
     const remote=await cloudGet();
-    if(remote && remote._appver && remote._appver>APP_VER){        // a newer version of the app is live — reload to get it
-      const last=+(sessionStorage.getItem("_vreload")||0);
-      if(Date.now()-last>600000){ sessionStorage.setItem("_vreload",String(Date.now())); location.reload(); }
-      return;
-    }
+    if(remote && remote._appver && remote._appver>APP_VER){ reloadForUpdate(); return; }   // a newer version is live — pick it up
     if(remote && remote._rev && remote._rev!==DB._rev){ DB=remote; normalizeDB(); render(); }
   }catch(e){}
 }
@@ -1122,7 +1123,8 @@ function render(){
     : (me.salaried
         ? [["me","My Overview"],["mytime","My Time Off"],["calendar","Team Calendar"],["chat","Messages"],["photos","Photos"]]
         : [["me","My Overview"],["timesheet","My Timesheet"],["mytime","My Time Off"],["calendar","Team Calendar"],["chat","Messages"],["photos","Photos"]]);
-  if(!tabs.find(t=>t[0]===TAB)) TAB=tabs[0][0];
+  const personalTabs=["me","mytime","myhours","timesheet"];   // admins can open their own personal views via the More menu
+  if(!tabs.find(t=>t[0]===TAB) && !(admin && personalTabs.includes(TAB))) TAB=tabs[0][0];
   const ys=allYears();
   $("#root").innerHTML=`
    <div id="ptr"><span class="ptr-ico">↻</span></div>
@@ -1393,7 +1395,7 @@ function bottomNavHTML(admin,me){
 function openMoreNav(){
   const me=emp(SESSION), admin=me.role==="admin";
   const rest = admin
-    ? [["payroll","💵","Payroll"],["photos","📷","Photos"],["employees","👥","Employees"],["inbox","📥","Inbox"]]
+    ? [["mytime","🌴","My time off"],...(me.salaried?[]:[["timesheet","🕒","My timesheet"]]),["payroll","💵","Payroll"],["photos","📷","Photos"],["employees","👥","Employees"],["inbox","📥","Inbox"]]
     : (me.salaried?[["photos","📷","Photos"]]:[["calendar","📅","Team Calendar"],["photos","📷","Photos"]]);
   openModal(`<h3>More</h3><div class="body"><div class="more-grid">
     ${rest.map(([id,ico,lbl])=>`<button class="more-tile" onclick="closeModal();setTab('${id}')"><span>${ico}</span>${lbl}</button>`).join("")}
@@ -1405,6 +1407,7 @@ function openMoreNav(){
 
 /* ================= ADMIN VIEWS ================= */
 function viewAdminDash(v){
+  const me=emp(SESSION);
   const active=DB.employees.filter(e=>e.active).sort((a,b)=>a.name.localeCompare(b.name));
   const ptoStaff=active.filter(e=>e.getsPto);
   let ptoUsedTot=0; ptoStaff.forEach(e=>{ptoUsedTot+=ptoUsed(e.id,YEAR);});
@@ -1418,9 +1421,10 @@ function viewAdminDash(v){
      <div class="stat alt"><div class="k">PTO Used ${YEAR}</div><div class="v">${round(ptoUsedTot)}<span class="u">hrs</span></div></div>
      <div class="stat"><div class="k">Pending Requests</div><div class="v">${pend}</div></div>
    </div>
-   ${pend?`<div class="card" style="margin-top:14px;border-color:#f0d9ad;background:#fffaf0">
-      <b style="color:var(--pending)">${pend} time-off ${pend===1?"request":"requests"} awaiting your review.</b>
-      <button class="btn sm" style="margin-left:10px" onclick="setTab('timeoff')">Review now</button></div>`:""}
+   ${me.getsPto?`<div class="card" style="margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-left:4px solid var(--gold)">
+     <div style="flex:1;min-width:180px"><b>Your time off · ${YEAR}</b><div style="color:var(--muted);font-size:13px;margin-top:2px"><b>${round(allowedVac(me.id))} h</b> available · ${round(ptoUsed(me.id,YEAR))} used · <b style="color:var(--ok)">${round(allowedVac(me.id)-ptoUsed(me.id,YEAR))} h left</b>${bankOT(me.id,YEAR)?` · incl. ${round(bankOT(me.id,YEAR))} h banked OT`:""}</div></div>
+     <button class="btn sm" onclick="setTab('mytime')">My time off ›</button></div>`:""}
+   ${dashTimeoffHTML()}
    ${dashTimesheetsHTML()}
    <div class="dash-2col">
      <div>
@@ -1762,6 +1766,32 @@ function dashTimesheetsHTML(){
      ${doneRecent.map(t=>{ const e=emp(t.empId); return `<div class="card" style="display:flex;align-items:center;gap:10px;margin-top:8px;opacity:.75">
        <div style="flex:1"><b>${esc(e.name)}</b> <span style="color:var(--muted);font-size:12.5px">· ${esc(t.start)} · ${round(tsTotal(t,true))} h · approved by ${esc((t.approvedBy||"").split(" ")[0])}</span></div>
        <button class="btn sm ghost" onclick="reviewSheet('${t.empId}','${esc(t.start)}')">View</button></div>`; }).join("")}</details>`:""}`;
+}
+/* Pending time-off requests — shows who asked and exactly what they want, with Approve / Decline */
+function daysOfH(h){ return Math.round((h/8)*10)/10; }
+function dashTimeoffHTML(){
+  const pend=(DB.timeoff||[]).filter(t=>t.status==="pending"&&emp(t.empId)).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  if(!pend.length) return `<div class="card" style="margin-top:14px;color:var(--muted)">🌴 No time-off requests waiting.</div>`;
+  const row=t=>{ const e=emp(t.empId); const span=t.date+(t.end?` – ${t.end}`:""); const d=daysOfH(+t.hours||0);
+    return `<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;border-left:4px solid var(--pending)">
+      <div class="avatar">${e.photo?`<img src="${e.photo}" alt="">`:initials(e.name)}</div>
+      <div style="flex:1;min-width:160px">
+        <b>${esc(e.name)}</b> <span style="color:var(--muted);font-size:12.5px">wants time off</span>
+        <div style="font-size:13.5px;margin-top:2px"><b>${esc(span)}</b> · <span class="type-pill t-${t.type}">${esc(t.type)}</span> · ${round(t.hours)} h (${d} day${d===1?"":"s"})</div>
+        ${t.note?`<div style="color:var(--muted);font-size:12.5px;margin-top:2px">“${esc(t.note)}”</div>`:""}
+      </div>
+      <div class="row-actions">
+        <button class="btn sm ghost" onclick="declineTO('${t.id}')">Decline</button>
+        <button class="btn sm" onclick="approve('${t.id}')">✓ Approve</button></div>
+    </div>`; };
+  return `<div class="section-title sm" style="margin-top:18px"><h2>🌴 Time-off requests · ${pend.length}</h2></div>${pend.map(row).join("")}`;
+}
+function declineTO(id){
+  const t=(DB.timeoff||[]).find(x=>x.id===id); if(!t)return;
+  if(!confirm("Decline this time-off request?"))return;
+  const who=emp(t.empId), span=t.date+(t.end?` – ${t.end}`:"");
+  DB.timeoff=DB.timeoff.filter(x=>x.id!==id); save(); render(); flash("Request declined");
+  if(who&&who.email) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"Time off not approved",body:`Your request for ${span} (${round(t.hours)}h ${t.type}) wasn't approved — see Nick with questions.`,url:"/"});
 }
 function cardFor(e){
   const used=ptoUsed(e.id,YEAR),base=+e.vacAllot||0,bank=bankOT(e.id,YEAR),allot=base+bank,pct=allot>0?Math.min(100,used/allot*100):(used>0?100:0),over=allot>0&&used>allot,left=allot-used;
