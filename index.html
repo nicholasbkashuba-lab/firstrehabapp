@@ -253,6 +253,16 @@
   }
   @media(min-width:561px){.cal-dots{display:none}}
 
+  /* ---------- NOTIFICATION BANNER ---------- */
+  .notif-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#16515f,var(--teal));color:var(--cream);padding:10px 14px;font-size:13.5px}
+  .notif-banner .nb-ic{font-size:18px;flex:none}
+  .notif-banner .nb-txt{flex:1;min-width:0;line-height:1.35}
+  .notif-banner .nb-txt b{color:#fff}
+  .notif-banner .nb-btn{background:var(--coral);color:#3a2312;border:none;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;flex:none}
+  .notif-banner .nb-btn:hover{filter:brightness(1.05)}
+  .notif-banner .nb-x{background:rgba(255,255,255,.12);color:var(--cream);border:none;border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer;flex:none}
+  @media(max-width:560px){.notif-banner{font-size:12.5px;padding:9px 11px;gap:8px}}
+
   /* ---------- MODAL ---------- */
   .overlay{position:fixed;inset:0;background:rgba(14,58,71,.42);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
   .overlay.on{display:flex}
@@ -726,7 +736,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=12;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=13;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -997,6 +1007,31 @@ async function enablePushSilent(){
     if(SB&&AUTH_EMAIL) await SB.from("push_subs").upsert({endpoint:sub.endpoint,email:AUTH_EMAIL,sub:sub.toJSON()},{onConflict:"endpoint"});
   }catch(e){}
 }
+/* Persistent nudge to switch notifications on — shown until the device is actually subscribed */
+let NOTIF_BANNER_DISMISSED=false;
+function notifBannerHTML(){
+  if(!SESSION||NOTIF_BANNER_DISMISSED) return "";
+  if(typeof Notification==="undefined") return "";
+  if(Notification.permission==="granted"){ const me=emp(SESSION); if(me&&me.notifyPush) return ""; }  // already on
+  const me=emp(SESSION); const admin=me&&me.role==="admin";
+  const iosNeedsInstall=IS_IOS&&!isStandalone();
+  const msg=admin?"Get a phone alert the moment someone requests time off, sends a message, or a timesheet comes in."
+    :"Get a phone alert for announcements, messages, and time-off updates — even when the app is closed.";
+  return `<div class="notif-banner">
+    <span class="nb-ic">🔔</span>
+    <span class="nb-txt"><b>Turn on notifications.</b> ${msg}</span>
+    ${iosNeedsInstall
+      ? `<button class="nb-btn" onclick="installApp()">How</button>`
+      : `<button class="nb-btn" onclick="enableNotifsFromBanner()">Turn on</button>`}
+    <button class="nb-x" onclick="NOTIF_BANNER_DISMISSED=true;render()" aria-label="Dismiss">✕</button>
+  </div>`;
+}
+async function enableNotifsFromBanner(){
+  const ok=await enablePush();
+  const me=emp(SESSION); if(me){ me.notifyPush=ok; save(true); }
+  if(ok) flash("Notifications are on for this device 🔔");
+  render();
+}
 /* one-time friendly ask right after login, on devices where push can actually work */
 async function maybeAskPush(){
   try{
@@ -1142,6 +1177,7 @@ function render(){
      <button class="bell" onclick="openNotify()" title="Notifications & email" aria-label="Notifications">🔔</button>
      <button class="signout" onclick="signOut()">Sign out</button>
    </div></header>
+   ${notifBannerHTML()}
    <div class="tabbar"><nav class="tabs">${tabs.map(([id,l])=>`<button class="tab ${TAB===id?"active":""}" onclick="setTab('${id}')">${l}${id==="timeoff"&&pendingCount()?` · ${pendingCount()}`:""}${id==="inbox"&&inboxCount()?` · ${inboxCount()}`:""}${id==="chat"&&chatUnread()?` · ${chatUnread()}`:""}</button>`).join("")}</nav></div>
    <div class="wrap" id="view"></div>
    ${bottomNavHTML(admin,me)}
