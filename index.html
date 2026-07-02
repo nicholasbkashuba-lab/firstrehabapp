@@ -203,6 +203,56 @@
   .cal-cell.isHol{background:linear-gradient(180deg,#f3faf6,#fff)}
   .cal-more{font-size:10.5px;color:var(--muted);font-weight:600}
 
+  /* ---------- CALENDAR (Google-style month/week/day) ---------- */
+  .cal-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .cal-title{font-family:"Playfair Display",Georgia,serif;font-size:22px;color:var(--teal);font-weight:700;min-width:0}
+  .cal-navbtns{display:flex;align-items:center;gap:4px}
+  .cal-navbtns button,.cal-todaybtn{background:var(--white);border:1px solid var(--line);border-radius:9px;height:36px;color:var(--teal);font-weight:600;cursor:pointer}
+  .cal-navbtns button{width:36px;font-size:17px}
+  .cal-todaybtn{padding:0 14px;font-size:13px}
+  .cal-navbtns button:hover,.cal-todaybtn:hover{border-color:var(--coral)}
+  .seg{display:inline-flex;background:#eef0ee;border-radius:10px;padding:3px}
+  .seg button{border:none;background:transparent;padding:7px 14px;border-radius:8px;font-weight:700;font-size:13px;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--white);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .cal-dot{width:7px;height:7px;border-radius:50%;flex:none}
+  /* week view */
+  .cal-week{display:flex;flex-direction:column;gap:10px}
+  .wk-day{display:flex;gap:12px;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);cursor:pointer}
+  .wk-day.today{border-color:var(--coral);box-shadow:0 0 0 2px rgba(244,162,97,.35)}
+  .wk-date{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;width:52px;flex:none;border-right:1px solid var(--line);padding-right:12px}
+  .wk-dow{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700}
+  .wk-num{font-size:26px;font-weight:800;font-family:"Playfair Display",serif;color:var(--ink);line-height:1.1}
+  .wk-day.today .wk-num{color:var(--coral)}
+  .wk-items{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;justify-content:center}
+  .wk-empty{color:#b8b0a0;font-size:13px;font-style:italic}
+  .cal-chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:4px 9px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  /* day view */
+  .cal-dayview{background:var(--white);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .dv-head{padding:16px 18px;background:linear-gradient(180deg,#16515f,var(--teal));color:var(--cream)}
+  .dv-dow{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gold);font-weight:700}
+  .dv-date{font-family:"Playfair Display",serif;font-size:26px;font-weight:800;margin-top:2px}
+  .dv-body{padding:8px 14px 16px}
+  .dv-sect{margin-top:14px}
+  .dv-sect h4{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+  .dv-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;margin-bottom:7px;background:#faf7ef}
+  .dv-row .di{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none;color:#fff}
+  .dv-row .dt{flex:1;min-width:0}
+  .dv-row .dt b{font-size:14.5px}
+  .dv-row .dt small{display:block;color:var(--muted);font-size:12px}
+  .dv-empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:14px}
+  /* floating add button */
+  .cal-fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--coral);color:#3a2312;border:none;font-size:28px;font-weight:700;box-shadow:0 6px 20px rgba(244,162,97,.5);z-index:45;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .cal-fab:hover{filter:brightness(1.04)}
+  @media(min-width:741px){.cal-fab{bottom:28px}}
+  @media(max-width:560px){
+    .cal-cell{min-height:62px;padding:4px 4px}
+    .cal-date{font-size:11px;margin-bottom:2px}
+    .cal-ev{display:none}                    /* phone month view uses dots, not text */
+    .cal-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:1px}
+    .cal-title{font-size:18px}
+  }
+  @media(min-width:561px){.cal-dots{display:none}}
+
   /* ---------- MODAL ---------- */
   .overlay{position:fixed;inset:0;background:rgba(14,58,71,.42);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
   .overlay.on{display:flex}
@@ -569,6 +619,7 @@ const SHIRT_COLORS=["Blue","Green","Black","Maroon"];
 const SHIRT_HEX={Blue:"#2f6f9e",Green:"#3f9c78",Black:"#2b2b2b",Maroon:"#7c3244"};
 const SHIRT_SIZES=["XS","S","M","L","XL","2XL","3XL"];
 let DB=null, SESSION=null, YEAR=2026, TAB="", calMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+let calView="month", calDay=new Date();   // calendar: month | week | day, and the focused day for week/day views
 let LOCKED=false;   // true when the cloud is locked down and no one is signed in yet
 let RECOVERY=false; // true when arriving from a "reset password" email link
 
@@ -675,7 +726,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=8;   // bumped on breaking sync changes; the database rejects writes from older app code
+const APP_VER=9;   // bumped on breaking sync changes; the database rejects writes from older app code
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1094,7 +1145,7 @@ function render(){
   ({dash:viewAdminDash,timeoff:viewAdminTimeoff,payroll:viewPayroll,calendar:viewCalendar,employees:viewEmployees,timesheets:viewAdminTimesheets,inbox:viewInbox,photos:viewPhotos,
     me:viewMyOverview,myhours:viewMyHours,mytime:viewMyTime,timesheet:viewMyTimesheet,chat:viewChat}[TAB])(v);
 }
-function setTab(t){TAB=t;if(t==="calendar"){const n=new Date();calMonth=new Date(n.getFullYear(),n.getMonth(),1);}render();window.scrollTo(0,0);}
+function setTab(t){TAB=t;if(t==="calendar"){const n=new Date();calMonth=new Date(n.getFullYear(),n.getMonth(),1);calDay=n;}render();window.scrollTo(0,0);}
 function signOut(){ if(AUTHED){ authSignOut(); } SESSION=null;TAB="";render();window.scrollTo(0,0);}
 
 /* ================= LOGIN ================= */
@@ -1936,70 +1987,120 @@ function viewMyTime(v){
 }
 
 /* ================= SHARED CALENDAR ================= */
+/* ---- shared: everything happening on one date ---- */
+function sameYMD(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+function dayItems(date){
+  const y=date.getFullYear(),m=date.getMonth(),dn=date.getDate();
+  const offs=DB.timeoff.filter(t=>{ if(t.status!=="approved")return false; const s=toDate(t.date),e=t.end?toDate(t.end):s; return date>=stripT(s)&&date<=stripT(e); });
+  const events=(DB.events||[]).filter(ev=>{ const s=toDate(ev.date),e=ev.end?toDate(ev.end):s; return date>=stripT(s)&&date<=stripT(e); }).sort((a,b)=>(to24(a.time||"")||"99").localeCompare(to24(b.time||"")||"99"));
+  const bdays=DB.employees.filter(e=>e.active&&e.bday).filter(e=>{const p=String(e.bday).split("/");return +p[0]-1===m&&+p[1]===dn;});
+  const holName=(usHolidays(y).find(h=>{const p=h.key.split("/");return +p[0]-1===m&&+p[1]===dn;})||{}).name||null;
+  return {offs,events,bdays,holName};
+}
+function stripT(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function calItemCount(it){ return it.offs.length+it.events.length+it.bdays.length+(it.holName?1:0); }
+
 function viewCalendar(v){
-  const admin=emp(SESSION)&&emp(SESSION).role==="admin";
+  const title = calView==="month" ? calMonth.toLocaleString("en-US",{month:"long",year:"numeric"})
+    : calView==="week" ? weekRangeLabel(calDay)
+    : calDay.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const seg=`<div class="seg">
+    <button class="${calView==="month"?"on":""}" onclick="setCalView('month')">Month</button>
+    <button class="${calView==="week"?"on":""}" onclick="setCalView('week')">Week</button>
+    <button class="${calView==="day"?"on":""}" onclick="setCalView('day')">Day</button></div>`;
+  const body = calView==="month"?calMonthHTML():calView==="week"?calWeekHTML():calDayHTML();
+  v.innerHTML=`
+   <div class="cal-toolbar">
+     <div class="cal-navbtns"><button onclick="calNav(-1)" aria-label="Previous">‹</button><button onclick="calNav(1)" aria-label="Next">›</button></div>
+     <button class="cal-todaybtn" onclick="calGoToday()">Today</button>
+     <div class="cal-title" style="flex:1">${esc(title)}</div>
+     ${seg}
+   </div>
+   ${body}
+   <button class="cal-fab" onclick="openEventForFocus()" aria-label="Add to calendar" title="Add to calendar">＋</button>`;
+}
+function calMonthHTML(){
   const y=calMonth.getFullYear(),m=calMonth.getMonth();
-  const first=new Date(y,m,1),startDow=first.getDay();
-  const daysInMonth=new Date(y,m+1,0).getDate();
-  const monthName=first.toLocaleString("en-US",{month:"long",year:"numeric"});
-  const evByDay={};
-  DB.timeoff.filter(t=>t.status==="approved").forEach(t=>{
-    const s=toDate(t.date), e=t.end?toDate(t.end):s;
-    for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){
-      if(d.getFullYear()===y&&d.getMonth()===m){ const k=d.getDate();(evByDay[k]=evByDay[k]||[]).push(t); }
-    }
-  });
-  // team events (anyone-added)
-  const evtByDay={};
-  (DB.events||[]).forEach(ev=>{
-    const s=toDate(ev.date), e=ev.end?toDate(ev.end):s;
-    for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){
-      if(d.getFullYear()===y&&d.getMonth()===m){ const k=d.getDate();(evtByDay[k]=evtByDay[k]||[]).push(ev); }
-    }
-  });
-  // birthdays this month
-  const bdByDay={};
-  DB.employees.filter(e=>e.active&&e.bday).forEach(e=>{const p=String(e.bday).split("/");if(+p[0]-1===m){const k=+p[1];(bdByDay[k]=bdByDay[k]||[]).push(e);}});
-  const holByDay={}; usHolidays(y).forEach(h=>{const p=h.key.split("/");if(+p[0]-1===m)holByDay[+p[1]]=h.name;});
+  const first=new Date(y,m,1),startDow=first.getDay(),daysInMonth=new Date(y,m+1,0).getDate();
   const today=new Date();
   let cells="";
   const totalCells=Math.ceil((startDow+daysInMonth)/7)*7;
   for(let i=0;i<totalCells;i++){
     const dayNum=i-startDow+1;
     if(dayNum<1||dayNum>daysInMonth){cells+=`<div class="cal-cell out"></div>`;continue;}
-    const iso=`${y}-${pad(m+1)}-${pad(dayNum)}`;
-    const evs=evByDay[dayNum]||[], evts=evtByDay[dayNum]||[], bds=bdByDay[dayNum]||[], hol=holByDay[dayNum];
-    const isToday=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===dayNum;
-    let items=[];
+    const date=new Date(y,m,dayNum), iso=`${y}-${pad(m+1)}-${pad(dayNum)}`;
+    const it=dayItems(date), isToday=sameYMD(today,date);
     const usedC=new Set();
     const pickC=base=>{ if(!usedC.has(base)){usedC.add(base);return base;} for(const c of PERSON_COLORS){ if(!usedC.has(c)){usedC.add(c);return c;} } return base; };
-    if(hol) items.push(`<div class="cal-ev hol">🎉 ${esc(hol)}</div>`);
-    bds.forEach(e=>items.push(`<div class="cal-ev bday">🎂 ${esc(e.first)}</div>`));
-    evts.forEach(ev=>{const c=pickC(eventColor(ev.id));items.push(`<div class="cal-ev" style="background:${c}1e;color:${c};border-left:3px solid ${c}">📌 ${ev.time?esc(shortTime(ev.time))+" ":""}${esc(ev.title)}</div>`);});
-    evs.forEach(t=>{const c=pickC(personColor(t.empId));const nm=emp(t.empId);items.push(`<div class="cal-ev" style="background:${c}1e;color:${c};border-left:3px solid ${c}">${esc(nm?nm.first:"")}</div>`);});
+    let items=[], dots=[];
+    if(it.holName){ items.push(`<div class="cal-ev hol">🎉 ${esc(it.holName)}</div>`); dots.push(`<i class="cal-dot" style="background:#3f9c78"></i>`); }
+    it.bdays.forEach(e=>{ items.push(`<div class="cal-ev bday">🎂 ${esc(e.first)}</div>`); dots.push(`<i class="cal-dot" style="background:#c98b2e"></i>`); });
+    it.events.forEach(ev=>{const c=pickC(eventColor(ev.id));items.push(`<div class="cal-ev" style="background:${c}1e;color:${c};border-left:3px solid ${c}">📌 ${ev.time?esc(shortTime(ev.time))+" ":""}${esc(ev.title)}</div>`);dots.push(`<i class="cal-dot" style="background:${c}"></i>`);});
+    it.offs.forEach(t=>{const c=pickC(personColor(t.empId));const nm=emp(t.empId);items.push(`<div class="cal-ev" style="background:${c}1e;color:${c};border-left:3px solid ${c}">${esc(nm?nm.first:"")}</div>`);dots.push(`<i class="cal-dot" style="background:${c}"></i>`);});
     const cap=4, shownHTML=items.slice(0,cap).join(""), more=items.length>cap?`<div class="cal-more">+${items.length-cap} more</div>`:"";
-    cells+=`<div class="cal-cell ${isToday?"today":""} ${hol?"isHol":""}" onclick="openEvent('${iso}')" title="Tap to add an event">
-        <div class="cal-date">${dayNum}</div>${shownHTML}${more}</div>`;
+    cells+=`<div class="cal-cell ${isToday?"today":""} ${it.holName?"isHol":""}" onclick="openDayView('${iso}')">
+        <div class="cal-date">${dayNum}</div>${shownHTML}${more}<div class="cal-dots">${dots.slice(0,6).join("")}</div></div>`;
   }
-  // this month's team events list (manageable)
-  const monthEvents=(DB.events||[]).filter(ev=>{const d=toDate(ev.date);return d.getFullYear()===y&&d.getMonth()===m;}).sort((a,b)=>cmpDate(a.date,b.date));
-  const eventList=monthEvents.length?`<div class="section-title sm" style="margin-top:22px"><h2>📌 Team events · ${monthName}</h2></div>
-     <div class="card" style="padding:6px 4px">${monthEvents.map(ev=>`<div class="mreq"><span class="bcake">📌</span><div class="bgrow"><b>${esc(ev.title)}</b><span class="bwhen">${esc(ev.date)}${ev.time?` · ${esc(ev.time)}`:""}${ev.end?` – ${esc(ev.end)}`:""}${ev.note?` · ${esc(ev.note)}`:""} · added by ${esc(empName(ev.empId))}</span></div>${(admin||ev.empId===SESSION)?`<div class="row-actions" style="margin-left:auto"><button class="btn sm ghost" onclick="openEvent(null,'${ev.id}')">Edit</button><button class="btn danger" onclick="delEvent('${ev.id}')">Remove</button></div>`:""}</div>`).join("")}</div>`:"";
-  v.innerHTML=`
-   <div class="section-title"><h2>Team calendar</h2><span class="hint">Time off, birthdays, holidays &amp; team events</span><button class="btn" onclick="openEvent()">＋ Add to calendar</button></div>
-   <div class="cal-head">
-     <div class="cal-legend"><span><span class="leg-multi"><i style="background:#E4572E"></i><i style="background:#2E86AB"></i><i style="background:#8E44AD"></i></span> Who's off (each a color)</span><span><i class="dot" style="background:#c98b2e"></i>🎂 Birthday</span><span><i class="dot" style="background:var(--teal)"></i>📌 Event</span><span><i class="dot" style="background:#3f9c78"></i>🎉 Holiday</span></div>
-     <div class="cal-nav"><button onclick="calStep(-1)">‹</button><div class="cal-month" onclick="calToday()" title="Back to this month" style="cursor:pointer">${monthName}</div><button onclick="calStep(1)">›</button></div>
-   </div>
-   <div class="calendar"><div class="cal-grid">
+  return `<div class="calendar"><div class="cal-grid">
      ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>`<div class="cal-dow">${d}</div>`).join("")}
      ${cells}
    </div></div>
-   <p class="mini-hint">Tap any day to add an event — a happy hour, potluck, reminder, anything. Everyone sees it.</p>
-   ${eventList}`;
+   <p class="mini-hint">Tap any day to see it in detail, or hit ＋ to add an event.</p>`;
 }
-function calStep(n){calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1);render();}
-function calToday(){const t=new Date();calMonth=new Date(t.getFullYear(),t.getMonth(),1);render();}
+function chipFor(it,label,icon,color){ return `<span class="cal-chip" style="background:${color}1e;color:${color}">${icon} ${esc(label)}</span>`; }
+function dayChips(it){
+  let chips=[];
+  if(it.holName) chips.push(chipFor(it,it.holName,"🎉","#3f9c78"));
+  it.bdays.forEach(e=>chips.push(chipFor(it,e.first+"'s birthday","🎂","#c98b2e")));
+  it.events.forEach(ev=>chips.push(chipFor(it,(ev.time?shortTime(ev.time)+" ":"")+ev.title,"📌",eventColor(ev.id))));
+  it.offs.forEach(t=>{const nm=emp(t.empId);chips.push(chipFor(it,(nm?nm.first:"")+" off","🌴",personColor(t.empId)));});
+  return chips;
+}
+function calWeekHTML(){
+  const start=weekStart(calDay), today=new Date();
+  let rows="";
+  for(let i=0;i<7;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    const it=dayItems(d), chips=dayChips(it), iso=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    rows+=`<div class="wk-day ${sameYMD(today,d)?"today":""}" onclick="openDayView('${iso}')">
+      <div class="wk-date"><span class="wk-dow">${d.toLocaleDateString("en-US",{weekday:"short"})}</span><span class="wk-num">${d.getDate()}</span></div>
+      <div class="wk-items">${chips.length?chips.join(""):`<span class="wk-empty">Nothing scheduled</span>`}</div>
+    </div>`;
+  }
+  return `<div class="cal-week">${rows}</div>`;
+}
+function calDayHTML(){
+  const it=dayItems(calDay), admin=emp(SESSION)&&emp(SESSION).role==="admin";
+  const row=(color,icon,title,sub,ev)=>`<div class="dv-row"><div class="di" style="background:${color}">${icon}</div><div class="dt"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div>${ev&&(admin||ev.empId===SESSION)?`<div class="row-actions"><button class="btn sm ghost" onclick="event.stopPropagation();openEvent(null,'${ev.id}')">Edit</button></div>`:""}</div>`;
+  let out="";
+  if(it.holName) out+=`<div class="dv-sect"><h4>Holiday</h4>${row("#3f9c78","🎉",it.holName,"US holiday")}</div>`;
+  if(it.bdays.length) out+=`<div class="dv-sect"><h4>Birthdays</h4>${it.bdays.map(e=>row("#c98b2e","🎂",e.name,"Birthday 🎉")).join("")}</div>`;
+  if(it.events.length) out+=`<div class="dv-sect"><h4>Events</h4>${it.events.map(ev=>row(eventColor(ev.id),"📌",ev.title,[ev.time?ev.time:"",ev.note||"","added by "+empName(ev.empId)].filter(Boolean).join(" · "),ev)).join("")}</div>`;
+  if(it.offs.length) out+=`<div class="dv-sect"><h4>Out of office</h4>${it.offs.map(t=>{const nm=emp(t.empId);return row(personColor(t.empId),(nm&&nm.photo?"":"🌴"),(nm?nm.name:"")+" — off",[t.type,t.date+(t.end?" – "+t.end:"")].filter(Boolean).join(" · "));}).join("")}</div>`;
+  if(!out) out=`<div class="dv-empty">Nothing on the calendar this day.<br><span style="font-size:13px">Tap ＋ to add something.</span></div>`;
+  return `<div class="cal-dayview">
+    <div class="dv-head"><div class="dv-dow">${calDay.toLocaleDateString("en-US",{weekday:"long"})}</div><div class="dv-date">${calDay.toLocaleDateString("en-US",{month:"long",day:"numeric"})}</div></div>
+    <div class="dv-body">${out}</div></div>`;
+}
+/* week helpers */
+function weekStart(d){ const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()); s.setDate(s.getDate()-s.getDay()); return s; }
+function weekRangeLabel(d){ const s=weekStart(d), e=new Date(s.getFullYear(),s.getMonth(),s.getDate()+6);
+  const sm=s.toLocaleDateString("en-US",{month:"short",day:"numeric"}), em=e.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+  return `${sm} – ${em}`; }
+/* view + navigation */
+function setCalView(mode){ calView=mode; if(mode!=="month"){ /* keep calMonth in sync for consistency */ } render(); window.scrollTo(0,0); }
+function calNav(n){
+  if(calView==="month"){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); calDay=new Date(calMonth); }
+  else if(calView==="week"){ calDay=new Date(calDay.getFullYear(),calDay.getMonth(),calDay.getDate()+7*n); calMonth=new Date(calDay.getFullYear(),calDay.getMonth(),1); }
+  else { calDay=new Date(calDay.getFullYear(),calDay.getMonth(),calDay.getDate()+n); calMonth=new Date(calDay.getFullYear(),calDay.getMonth(),1); }
+  render();
+}
+function calGoToday(){ const t=new Date(); calDay=t; calMonth=new Date(t.getFullYear(),t.getMonth(),1); render(); }
+function openDayView(iso){ const p=iso.split("-").map(Number); calDay=new Date(p[0],p[1]-1,p[2]); calMonth=new Date(p[0],p[1]-1,1); calView="day"; render(); window.scrollTo(0,0); }
+function openEventForFocus(){ const d=calView==="month"?new Date():calDay; openEvent(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`); }
+/* legacy names still referenced elsewhere */
+function calStep(n){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); render(); }
+function calToday(){ calGoToday(); }
 
 /* ================= MODALS ================= */
 function openModal(h){$("#modal").innerHTML=h;$("#overlay").classList.add("on");}
@@ -2341,10 +2442,11 @@ function parseShift(str,pm){
 function maskTime(str){
   str=String(str||"").toLowerCase().trim();
   const ap=(str.match(/[ap]/)||[""])[0];              // keep a typed a/p (for the flexible notes field)
-  const body=str.replace(/[^0-9:]/g,"");
+  const d=str.replace(/[^0-9]/g,"").slice(0,4);       // work from the raw digits so a 4th digit is never dropped
   let out;
-  if(body.includes(":")){ const p=body.split(":"); out=p[0].replace(/\D/g,"").slice(0,2)+":"+(p[1]||"").replace(/\D/g,"").slice(0,2); }
-  else { let d=body.replace(/\D/g,"").slice(0,4); out=d.length<=2?d:d.length===3?d[0]+":"+d.slice(1):d.slice(0,2)+":"+d.slice(2); }
+  if(d.length<=2) out=d;
+  else if(d.length===3) out=d[0]+":"+d.slice(1);      // 3 digits → h:mm (e.g. 130 → 1:30)
+  else out=d.slice(0,2)+":"+d.slice(2);               // 4 digits → hh:mm (e.g. 1230 → 12:30)
   return out+(ap||"");
 }
 function disp12(v){ if(!v) return ""; let p=v.split(":"),h=+p[0],m=+p[1]; let hh=h%12; if(hh===0)hh=12; return hh+":"+String(m).padStart(2,"0"); }
@@ -2367,7 +2469,7 @@ function openDay(empId,startStr,idx){
   const dt=parseD(src.date);
   const helper = admin
     ? `<div class="round-hint">Totals round <b>${ROUND_MODE==="off"?"exactly as entered":ROUND_MODE+" to the quarter hour"}</b> (e.g. 9:10 → 9:15).</div>`
-    : `<div class="round-hint">Just type the time — mornings read as AM, afternoons as PM automatically.</div>`;
+    : `<div class="round-hint">Just type the time — mornings read as AM, afternoons as PM automatically. <b>Working straight through lunch?</b> Put your whole shift in Morning (clock in 8:00, clock out 2:30).</div>`;
   const noteBlock = flex ? `
     <div class="shift-block note">
       <div class="shift-head"><span class="shift-name">📝 Notes / cleaning</span><span class="shift-sub">any time</span></div>
@@ -2438,7 +2540,12 @@ function onShift(id,pm){
   const el=$("#"+id); if(!el) return;
   const masked=maskTime(el.value); el.value=masked;
   const key={m_in:"mIn",m_out:"mOut",a_in:"aIn",a_out:"aOut"}[id];
-  const v=parseShift(masked,pm);
+  let v=parseShift(masked,pm);
+  // let a shift run straight through lunch: if a clock-out lands at/before its clock-in, read it as PM
+  if(v && /_out$/.test(id)){
+    const inV=window._editDay.shift[id==="m_out"?"mIn":"aIn"];
+    if(inV){ const iv=hmToMin(inV), ov=hmToMin(v); if(ov<=iv && (+v.split(":")[0])<12) v=minToHM(ov+720); }
+  }
   window._editDay.shift[key]=v;
   const p=$("#"+id+"_p"); if(p) p.textContent=ampm(v);
   recalcDay();
