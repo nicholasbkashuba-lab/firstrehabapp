@@ -597,6 +597,138 @@
     .print-toolbar{display:none!important}
     @page{size:landscape;margin:.35in}
   }
+
+  /* ============================================================
+     FIRST REHABILITATION · NORTH PALM BEACH — DESIGN ELEVATION
+     Coastal-luxury refinement layer: layered shadows, gold accents,
+     refined type, and gentle motion. Loaded last so it wins.
+     ============================================================ */
+  :root{
+    --gold-grad:linear-gradient(90deg,#E9C46A,#F4A261 55%,#E9C46A);
+    --teal-grad:linear-gradient(160deg,#17566a 0%,#0E3A47 62%,#0B303B 100%);
+    --shadow-1:0 1px 2px rgba(14,58,71,.06),0 4px 14px rgba(14,58,71,.07);
+    --shadow-2:0 2px 6px rgba(14,58,71,.08),0 14px 34px rgba(14,58,71,.10);
+    --shadow-3:0 8px 24px rgba(14,58,71,.14),0 28px 64px rgba(14,58,71,.16);
+  }
+  html{scroll-behavior:smooth}
+  body{background:
+      radial-gradient(1100px 500px at 85% -160px, rgba(233,196,106,.14), transparent 60%),
+      radial-gradient(900px 460px at -140px 12%, rgba(20,80,95,.07), transparent 55%),
+      var(--cream)}
+  ::selection{background:rgba(233,196,106,.45)}
+  *:focus-visible{outline:2px solid var(--coral);outline-offset:2px;border-radius:4px}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#d9d0bd;border-radius:8px;border:2px solid var(--cream)}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* -- header: deep coastal teal with a gold hairline -- */
+  header.app{background:var(--teal-grad);box-shadow:0 1px 0 rgba(233,196,106,.35),0 10px 30px rgba(14,58,71,.28)}
+  header.app::after{content:"";display:block;height:2.5px;background:var(--gold-grad);opacity:.9}
+  .brand .sub{letter-spacing:2.6px}
+
+  /* -- login: sunrise-over-the-water moment -- */
+  .login-screen{background:
+      radial-gradient(1000px 520px at 72% -12%, rgba(233,196,106,.22), transparent 55%),
+      radial-gradient(1300px 700px at 70% -10%, #17566a 0%, var(--teal) 52%, #0B303B 100%)}
+  .login-card{border-radius:24px;box-shadow:var(--shadow-3),0 0 0 1px rgba(233,196,106,.22)}
+  .login-head{background:var(--teal-grad);position:relative;padding-bottom:30px}
+  .login-head::after{content:"";position:absolute;left:24%;right:24%;bottom:16px;height:2px;background:var(--gold-grad);border-radius:2px;opacity:.85}
+  .login-head .loc{font-size:10.5px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(246,241,231,.72);margin-top:7px;font-weight:600}
+  .btn-full{background:linear-gradient(180deg,#f6ad72,#F4A261);border-radius:13px;box-shadow:0 3px 0 #d98a45,0 10px 22px rgba(244,162,97,.35);transition:transform .12s,box-shadow .12s}
+  .btn-full:hover{transform:translateY(-1px);box-shadow:0 4px 0 #d98a45,0 14px 26px rgba(244,162,97,.42)}
+  .btn-full:active{transform:translateY(1px);box-shadow:0 1px 0 #d98a45}
+
+  /* -- section titles get a gold tick -- */
+  .section-title h2{display:flex;align-items:center;gap:10px;letter-spacing:.2px}
+  .section-title h2::before{content:"";width:5px;height:22px;border-radius:3px;background:var(--gold-grad);box-shadow:0 1px 4px rgba(233,196,106,.5);flex:none}
+  .section-title.sm h2::before{height:16px;width:4px}
+
+  /* -- cards & tables: soft depth, gentle lift -- */
+  .card{border-radius:16px;border-color:#eee6d6;box-shadow:var(--shadow-1);transition:box-shadow .18s,transform .18s}
+  .tbl-wrap{border-radius:16px;border-color:#eee6d6;box-shadow:var(--shadow-1)}
+  @media(hover:hover){
+    .card:hover,.tbl-wrap:hover{box-shadow:var(--shadow-2)}
+    .chat-item:hover,.wk-day:hover{transform:translateY(-1px);box-shadow:var(--shadow-2)}
+  }
+  th{background:linear-gradient(180deg,#fcf8ef,#f7f1e2);letter-spacing:1.4px}
+  tbody tr{transition:background .12s}
+  tbody tr:hover{background:#fdfaf2}
+
+  /* -- stat tiles: jewel gradient with inner glow -- */
+  .stat{background:var(--teal-grad);border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),var(--shadow-1);position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;top:-40%;right:-20%;width:70%;height:120%;background:radial-gradient(closest-side,rgba(233,196,106,.16),transparent);pointer-events:none}
+  .stat .k{letter-spacing:1.8px}
+  .stat .v{font-weight:700}
+
+  /* -- buttons: dimensional coral -- */
+  .btn{background:linear-gradient(180deg,#f6ad72,#F4A261);border-radius:11px;box-shadow:0 2px 0 #d98a45,0 6px 14px rgba(244,162,97,.28);transition:transform .12s,box-shadow .12s,filter .12s}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 3px 0 #d98a45,0 9px 18px rgba(244,162,97,.36)}
+  .btn:active{transform:translateY(1px);box-shadow:0 1px 0 #d98a45}
+  .btn.ghost{background:var(--white);box-shadow:var(--shadow-1)}
+  .btn.ghost:hover{box-shadow:var(--shadow-2)}
+  .btn.danger{box-shadow:none}
+
+  /* -- tabs: animated gold underline -- */
+  .tab{position:relative;transition:color .15s}
+  .tab::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:3px;border-radius:3px;background:var(--gold-grad);transform:scaleX(0);transition:transform .2s ease}
+  .tab.active{border-bottom-color:transparent}
+  .tab.active::after{transform:scaleX(1)}
+
+  /* -- bottom nav: floating glass bar -- */
+  @media(max-width:740px){
+    .bottom-nav{background:rgba(255,253,248,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(233,196,106,.45);box-shadow:0 -6px 24px rgba(14,58,71,.12)}
+    .bottom-nav button{transition:color .15s,transform .15s}
+    .bottom-nav button.on{transform:translateY(-1px)}
+    .bottom-nav button.on .bn-ico{filter:drop-shadow(0 2px 5px rgba(244,162,97,.55))}
+  }
+
+  /* -- calendar polish -- */
+  .calendar,.cal-dayview{border-radius:18px;box-shadow:var(--shadow-2);border-color:#eee6d6}
+  .cal-cell.today{box-shadow:inset 0 0 0 2px var(--coral),inset 0 0 22px rgba(244,162,97,.08)}
+  .dv-head{background:var(--teal-grad)}
+  .dv-head::after{content:"";display:block;height:2px;margin-top:12px;background:var(--gold-grad);border-radius:2px;opacity:.8;width:56px}
+  .cal-fab{background:linear-gradient(180deg,#f6ad72,#F4A261);box-shadow:0 4px 0 #d98a45,0 14px 30px rgba(244,162,97,.5);transition:transform .15s,box-shadow .15s}
+  .cal-fab:hover{transform:translateY(-2px) scale(1.03)}
+  .cal-fab:active{transform:translateY(1px)}
+  .wk-day{transition:transform .15s,box-shadow .15s}
+
+  /* -- chat: coastal thread -- */
+  .chat-scroll{background:linear-gradient(180deg,#fbf6ea,#f8f2e4)}
+  .bubble-row.mine .bubble{background:var(--teal-grad);box-shadow:0 3px 10px rgba(14,58,71,.22)}
+  .chat-send{background:linear-gradient(180deg,#f6ad72,#F4A261);box-shadow:0 2px 0 #d98a45,0 6px 14px rgba(244,162,97,.35)}
+
+  /* -- modal & toast: refined surfaces -- */
+  .modal{border-radius:20px;box-shadow:var(--shadow-3),0 0 0 1px rgba(233,196,106,.18)}
+  .toast{background:rgba(11,48,59,.96);border:1px solid rgba(233,196,106,.4);border-radius:13px;box-shadow:var(--shadow-2);backdrop-filter:blur(8px)}
+
+  /* -- footer: signature sign-off -- */
+  .app-foot{flex-direction:column;align-items:center;gap:8px;border-top:none;position:relative;padding-top:26px;text-align:center}
+  .app-foot::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:88px;height:2.5px;border-radius:3px;background:var(--gold-grad);opacity:.85}
+  .app-foot .ff{flex-direction:column;gap:6px;font-size:12.5px}
+  .app-foot .ff img{height:26px;opacity:.9}
+  .app-foot .r{color:#a89e88;font-size:11.5px;letter-spacing:.6px}
+  .foot-tag{font-size:10.5px;letter-spacing:2.6px;text-transform:uppercase;color:#b3a888;font-weight:600}
+
+  /* -- punch clock: the hero of the employee home -- */
+  .clock-card{display:flex;align-items:center;gap:16px;background:var(--teal-grad);color:var(--cream);border:none;margin-bottom:16px;box-shadow:var(--shadow-2);position:relative;overflow:hidden}
+  .clock-card::before{content:"";position:absolute;top:-45%;right:-12%;width:60%;height:150%;background:radial-gradient(closest-side,rgba(233,196,106,.16),transparent);pointer-events:none}
+  .cc-left{flex:1;min-width:0}
+  .cc-time{font-family:"Playfair Display",serif;font-size:32px;font-weight:800;line-height:1.05}
+  .cc-sub{font-size:13.5px;color:rgba(246,241,231,.88);margin-top:3px}
+  .cc-sub b{color:var(--gold)}
+  .cc-segs{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;font-weight:600}
+  .cc-segs span{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:3px 9px}
+  .cc-btn{background:linear-gradient(180deg,#f6ad72,#F4A261);color:#3a2312;border:none;border-radius:15px;padding:17px 22px;font-weight:800;font-size:15.5px;box-shadow:0 3px 0 #d98a45,0 12px 26px rgba(244,162,97,.45);cursor:pointer;flex:none;transition:transform .12s,box-shadow .12s;white-space:nowrap}
+  .cc-btn:hover{transform:translateY(-1px)}
+  .cc-btn:active{transform:translateY(1px);box-shadow:0 1px 0 #d98a45}
+  .cc-btn.out{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.09));color:var(--cream);border:1px solid rgba(233,196,106,.55);box-shadow:0 8px 20px rgba(0,0,0,.22)}
+  @media(max-width:480px){.cc-time{font-size:26px}.cc-btn{padding:15px 18px;font-size:14.5px}}
+
+  /* -- gentle entrance for each view -- */
+  @media(prefers-reduced-motion:no-preference){
+    #view{animation:viewIn .28s ease both}
+    @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  }
 </style>
 </head>
 <body>
@@ -736,7 +868,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=13;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=14;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1181,7 +1313,7 @@ function render(){
    <div class="tabbar"><nav class="tabs">${tabs.map(([id,l])=>`<button class="tab ${TAB===id?"active":""}" onclick="setTab('${id}')">${l}${id==="timeoff"&&pendingCount()?` · ${pendingCount()}`:""}${id==="inbox"&&inboxCount()?` · ${inboxCount()}`:""}${id==="chat"&&chatUnread()?` · ${chatUnread()}`:""}</button>`).join("")}</nav></div>
    <div class="wrap" id="view"></div>
    ${bottomNavHTML(admin,me)}
-   <footer class="app-foot"><div class="ff"><img src="${LOGO}" alt="First Rehabilitation"><span>Team Time Portal</span></div><div class="r">${CLINIC.addr1} · ${CLINIC.addr2}</div></footer>`;
+   <footer class="app-foot"><div class="ff"><img src="${LOGO}" alt="First Rehabilitation"><span class="foot-tag">First Rehabilitation · North Palm Beach, Florida</span></div><div class="r">${CLINIC.addr1} · ${CLINIC.addr2}</div></footer>`;
   const v=$("#view");
   ({dash:viewAdminDash,timeoff:viewAdminTimeoff,payroll:viewPayroll,calendar:viewCalendar,employees:viewEmployees,timesheets:viewAdminTimesheets,inbox:viewInbox,photos:viewPhotos,
     me:viewMyOverview,myhours:viewMyHours,mytime:viewMyTime,timesheet:viewMyTimesheet,chat:viewChat}[TAB])(v);
@@ -1194,7 +1326,7 @@ function renderLogin(){
   const online = authOn();                       // Supabase reachable → secure password logins
   $("#root").innerHTML=`
    <div class="login-screen"><div class="login-card">
-     <div class="login-head"><img src="${LOGO_WHITE}" class="login-logo" alt="First Rehabilitation"><div class="tag">Team Time Portal</div></div>
+     <div class="login-head"><img src="${LOGO_WHITE}" class="login-logo" alt="First Rehabilitation"><div class="tag">Team Time Portal</div><div class="loc">North Palm Beach · Florida</div></div>
      <div class="login-body">
        ${online?`
        <div class="auth-tabs">
@@ -1329,7 +1461,7 @@ async function doForgot(){
 function renderRecovery(){
   $("#root").innerHTML=`
    <div class="login-screen"><div class="login-card">
-     <div class="login-head"><img src="${LOGO_WHITE}" class="login-logo" alt="First Rehabilitation"><div class="tag">Team Time Portal</div></div>
+     <div class="login-head"><img src="${LOGO_WHITE}" class="login-logo" alt="First Rehabilitation"><div class="tag">Team Time Portal</div><div class="loc">North Palm Beach · Florida</div></div>
      <div class="login-body">
        <h2>Choose a new password</h2><p class="sub">You're setting a fresh password for your account.</p>
        <form onsubmit="event.preventDefault();doRecovery()">
@@ -2010,6 +2142,7 @@ function viewMyOverview(v){
   const topRow = showTimesheet ? `<div class="ov-grid">${weekSnapshotHTML(me.id)}${offCard}</div>` : offCard;
   v.innerHTML=`
    <div class="section-title"><h2>Hi ${esc(me.first)} 👋</h2><span class="hint">${dateStr}</span></div>
+   ${showTimesheet?clockCardHTML(me.id):""}
    ${hasActiveFeed()?`<div class="section-title sm"><h2>📣 What's happening</h2></div>${announceListHTML(false)}`:""}
    ${topRow}
    <div class="qa-grid">
@@ -2340,6 +2473,54 @@ function hmToMin(hm){ if(!hm) return null; const p=hm.split(":"); return (+p[0])
 function minToHM(min){ min=((min%1440)+1440)%1440; return `${String(Math.floor(min/60)).padStart(2,"0")}:${String(min%60).padStart(2,"0")}`; }
 function roundMin(min){ if(ROUND_MODE==="off"||min==null) return min; return ROUND_MODE==="nearest"?Math.round(min/15)*15:Math.ceil(min/15)*15; }
 function fmt12(hm){ if(!hm) return ""; let [h,m]=hm.split(":").map(Number); const ap=h>=12?"p":"a"; h=h%12; if(h===0)h=12; return `${h}:${String(m).padStart(2,"0")}${ap}`; }
+
+/* ===== One-tap punch clock — Check in when you arrive, Check out when you step out.
+   Writes real times straight into today's timesheet (an in-progress check-in is an
+   open segment that doesn't count toward hours until it's closed). ===== */
+function nowHM(){ const n=new Date(); return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`; }
+function clockRead(empId){
+  const ts=getTS(empId,periodStartFor(new Date()));
+  const t=fmtD(new Date()); const i=ts.days.findIndex(d=>d.date===t);
+  if(i<0) return null;
+  const day=ts.days[i];
+  return {i,day,open:(day.segs||[]).find(s=>s.in&&!s.out)};
+}
+function clockCardHTML(empId){
+  const st=clockRead(empId); if(!st) return "";
+  const done=(st.day.segs||[]).filter(s=>s.in&&s.out);
+  const worked=dayWorked(st.day,false);
+  const now=new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  return `<div class="card clock-card">
+    <div class="cc-left">
+      <div class="cc-time">${now}</div>
+      <div class="cc-sub">${st.open?`On the clock since <b>${ampm(st.open.in)}</b>`:(done.length?`<b>${round(worked)} h</b> logged today — welcome back`:`Tap to start today's timesheet`)}</div>
+      ${done.length?`<div class="cc-segs">${done.map(s=>`<span>${fmt12(s.in)}–${fmt12(s.out)}</span>`).join("")}</div>`:""}
+    </div>
+    ${st.open
+      ? `<button class="cc-btn out" onclick="clockOut()">⏸&nbsp; Check out</button>`
+      : `<button class="cc-btn" onclick="clockIn()">▶&nbsp; Check in</button>`}
+  </div>`;
+}
+function clockIn(){
+  const ts=ensureTS(SESSION,fmtD(periodStartFor(new Date())));
+  const t=fmtD(new Date()); const day=ts.days.find(d=>d.date===t);
+  if(!day){flash("Today isn't in this pay period");return;}
+  if((day.segs||[]).find(s=>s.in&&!s.out)){flash("You're already checked in");return;}
+  const hm=nowHM();
+  day.segs=day.segs||[];
+  day.segs.push({in:hm,out:"",shift:(+hm.split(":")[0])<12?"am":"pm"});
+  save(true);render();flash(`Checked in at ${ampm(hm)} ✓ Have a great shift!`);
+}
+function clockOut(){
+  const ts=ensureTS(SESSION,fmtD(periodStartFor(new Date())));
+  const t=fmtD(new Date()); const day=ts.days.find(d=>d.date===t);
+  const open=day&&(day.segs||[]).find(s=>s.in&&!s.out);
+  if(!open){flash("You're not checked in");return;}
+  const hm=nowHM();
+  if(hmToMin(hm)<=hmToMin(open.in)){ day.segs=day.segs.filter(s=>s!==open); save(true); render(); flash("Check-in cancelled"); return; }
+  open.out=hm;
+  save(true);render();flash(`Checked out at ${ampm(hm)} — ${round(segHours(open,false))}h logged ✓`);
+}
 function segHours(seg,useRound){ let i=hmToMin(seg.in), o=hmToMin(seg.out); if(i==null||o==null) return 0; if(useRound){i=roundMin(i);o=roundMin(o);} let d=o-i; if(d<0)d+=1440; return d/60; }
 function dayWorked(day,useRound){ return (day.segs||[]).reduce((s,seg)=>s+segHours(seg,useRound),0); }
 function dayTotal(day,useRound){ return dayWorked(day,useRound)+(+day.vac||0); }
