@@ -590,6 +590,8 @@ function normalizeDB(){
    ============================================================ */
 const SB_URL = "https://pclqpthqigsfteyluwqj.supabase.co";
 const SB_KEY = "sb_publishable_ERdB1Hn8B5cZ74Lq8otSKg_3bSwv5_K";
+/* public anon token used only to reach the first-time-enrollment service (which checks the staff list server-side) */
+const SB_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjbHFwdGhxaWdzZnRleWx1d3FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MzE0NzksImV4cCI6MjA5ODUwNzQ3OX0.uUBx2gdGz6yVc_oFPCM0xmCQYjElt6JFQS0wEisDChM";
 let SB=null, CLOUD=false;
 const LOCAL = (typeof window!=="undefined" && window.storage) ? window.storage : {
   async get(k){ try{ const v=localStorage.getItem(k); return v!=null?{key:k,value:v}:null; }catch(e){ return null; } },
@@ -752,12 +754,6 @@ async function authSignIn(email,pw){
   if(error) throw error;
   AUTHED=true; AUTH_EMAIL=(data.user.email||"").toLowerCase(); return data;
 }
-async function authSignUp(email,pw){
-  const {data,error}=await SB.auth.signUp({email:(email||"").trim().toLowerCase(),password:pw,options:{emailRedirectTo:location.origin}});
-  if(error) throw error;
-  if(data.session && data.user){ AUTHED=true; AUTH_EMAIL=(data.user.email||"").toLowerCase(); }
-  return data;
-}
 async function authSignOut(){ try{ if(SB) await SB.auth.signOut(); }catch(e){} AUTHED=false; AUTH_EMAIL=null; }
 async function authSetPassword(pw){ const {error}=await SB.auth.updateUser({password:pw}); if(error) throw error; }
 async function authReset(email){ const {error}=await SB.auth.resetPasswordForEmail((email||"").trim().toLowerCase(), {redirectTo: location.origin}); if(error) throw error; }
@@ -895,8 +891,6 @@ function signOut(){ if(AUTHED){ authSignOut(); } SESSION=null;TAB="";render();wi
 /* ================= LOGIN ================= */
 function renderLogin(){
   const online = authOn();                       // Supabase reachable → secure password logins
-  const roster = (DB&&DB.employees?DB.employees:[]).filter(e=>e.active!==false);
-  const nameOpts = roster.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join("");
   $("#root").innerHTML=`
    <div class="login-screen"><div class="login-card">
      <div class="login-head"><img src="${LOGO_WHITE}" class="login-logo" alt="First Rehabilitation"><div class="tag">Team Time Portal</div></div>
@@ -921,11 +915,9 @@ function renderLogin(){
        </div>
 
        <div id="paneEnroll" style="display:none">
-         <h2>Set up your login</h2><p class="sub">First time here? Pick your name and choose a password only you'll know. You'll use these to sign in from any device.</p>
+         <h2>Set up your login</h2><p class="sub">First time here? Enter the work email the clinic has on file for you and choose a password only you'll know. Only staff emails on file can create a login.</p>
          <form onsubmit="event.preventDefault();doEnroll()">
-         <label>Who are you?</label>
-         <select id="enName">${nameOpts||`<option value="">—</option>`}</select>
-         <label>Your email</label>
+         <label>Your email <span class="lite">(the one on your employee profile)</span></label>
          <input id="enEmail" type="email" name="email" autocomplete="username" placeholder="you@firstrehabnpb.com">
          <label>Create a password <span class="lite">(at least 8 characters)</span></label>
          <input id="enPass" type="password" name="password" autocomplete="new-password" placeholder="Choose a password">
@@ -970,34 +962,39 @@ async function doSignIn(){
     render(); window.scrollTo(0,0);
   }catch(e){
     const m=e.message||"";
-    msg.textContent = /Invalid login/i.test(m)?"Email or password is incorrect. If you just created your login, make sure you confirmed your email first."
+    msg.textContent = /Invalid login/i.test(m)?"Email or password is incorrect."
       : /not confirmed/i.test(m)?"Your email isn't confirmed yet — click the link in the confirmation email we sent you (check spam), then sign in."
       : (m||"Couldn't sign in.");
     msg.className="auth-msg err"; btn.disabled=false;
   }
 }
 async function doEnroll(){
-  const eid=$("#enName").value, email=$("#enEmail").value, pw=$("#enPass").value, msg=$("#enMsg"), btn=$("#enBtn");
-  if(!eid){ msg.textContent="Pick your name."; msg.className="auth-msg err"; return; }
-  if(!email){ msg.textContent="Enter your email."; msg.className="auth-msg err"; return; }
+  const email=($("#enEmail").value||"").trim().toLowerCase(), pw=$("#enPass").value, msg=$("#enMsg"), btn=$("#enBtn");
+  if(!email){ msg.textContent="Enter your work email."; msg.className="auth-msg err"; return; }
   if(!pw||pw.length<8){ msg.textContent="Password needs at least 8 characters."; msg.className="auth-msg err"; return; }
-  btn.disabled=true; msg.textContent="Creating your login…"; msg.className="auth-msg";
+  btn.disabled=true; msg.textContent="Checking the staff list…"; msg.className="auth-msg";
   try{
-    const res=await authSignUp(email,pw);
-    // link this email to the chosen employee profile
-    const me=emp(eid); if(me){ me.email=email.trim(); me.hasLogin=true; }
-    if(!AUTHED && res && !res.session){
-      // email confirmation is on → tell them to confirm, then sign in
-      msg.textContent="Check your email to confirm, then come back and sign in."; msg.className="auth-msg ok"; btn.disabled=false; return;
+    /* the enroll service only creates a login if this email is on an employee profile */
+    const res=await fetch(SB_URL+"/functions/v1/enroll",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_JWT,"apikey":SB_JWT},
+      body:JSON.stringify({email,password:pw})});
+    const out=await res.json().catch(()=>({}));
+    if(!res.ok||!out.ok){
+      const code=(out&&out.error)||"";
+      msg.textContent = code==="not_on_roster"?"That email isn't on the staff list. Ask Nick to add it to your employee profile, then try again."
+        : code==="already_registered"?"That email already has a login — use the Sign in tab (or \"Forgot your password?\")."
+        : code==="weak_password"?"Password needs at least 8 characters."
+        : code==="bad_email"?"Enter a valid email address."
+        : "Couldn't create your login — please try again.";
+      msg.className="auth-msg err"; btn.disabled=false; return;
     }
-    // signed in immediately
-    try{ await save(true); }catch(e){}
+    msg.textContent="Signing you in…";
+    await authSignIn(email,pw);
     const r=await afterAuthEnter();
-    if(!r.ok){ // ensure link saved even if match fell through
-      const m2=emp(eid); if(m2){ SESSION=m2.id; } }
+    if(!r.ok){ msg.textContent=r.msg; msg.className="auth-msg err"; btn.disabled=false; return; }
     render(); window.scrollTo(0,0);
   }catch(e){
-    msg.textContent = /already registered/i.test(e.message||"")?"That email already has a login — use the Sign in tab.":(e.message||"Couldn't create login.");
+    msg.textContent="Couldn't create your login — check your connection and try again.";
     msg.className="auth-msg err"; btn.disabled=false;
   }
 }
@@ -1518,11 +1515,11 @@ function openSecurity(){
     <p class="sub" style="margin-top:0">Every person has their own private password. Passwords are handled by Supabase Auth and stored securely — never inside the app's data.</p>
     <div class="sec-status ${CLOUD?"ok":"warn"}">${CLOUD?"☁️ Connected & locked — only signed-in staff can read or change the data":"⚠︎ Not connected to the backend right now"}</div>
     <div class="sec-step"><b>Login is required for everyone.</b> There is no passwordless quick-access. Anyone opening the portal must sign in, or tap <i>"First time here"</i> to create their password. So far <b>${enrolled} of ${total}</b> have set theirs up.</div>
+    <div class="sec-step"><b>Only your staff list can enroll.</b> Creating a login only works for an email that's on an employee profile below. Add or update someone's email under Employees and they can enroll right away — no other emails are accepted, and accounts that leave the roster are removed automatically every hour.</div>
     <div class="sec-step"><b>Database is locked down.</b> The data is protected by row-level security — a person must be signed in for the app to read or write anything. Visiting the link without a login shows only the sign-in screen.</div>
     <div class="sec-step"><b>Emails are live.</b> Password resets ("Forgot your password?") and sign-up confirmations are sent from your Resend-connected domain.</div>
     <div class="sec-step"><b>Nothing gets lost.</b> Saves from different people merge together instead of overwriting each other, and the server keeps a history of the last 200 versions — so timesheets, requests and edits can always be recovered.</div>
-    <div class="sec-step"><b>Closing enrollment.</b> Once everyone has a password, you can turn <i>off</i> new sign-ups in Supabase → Authentication → Providers → Email, so only existing staff can sign in.</div>
-    <div class="round-hint">Need to add someone later? Add them under Employees with their email, then have them tap "First time here" to set a password.</div>
+    <div class="round-hint">Need to add someone later? Add them under Employees with their email, then have them tap "First time here" to set a password. Changing someone's email? They'll just enroll again with the new one.</div>
   </div><div class="foot"><button class="btn" onclick="closeModal()">Done</button></div>`);
 }
 function viewEmployees(v){
@@ -1790,7 +1787,12 @@ function saveEmp(editId){
   const name=$("#e_name").value.trim();if(!name){flash("Enter a name");return;}
   const email=$("#e_email").value.trim(),phone=($("#e_phone")?$("#e_phone").value.trim():""),payType=$("#e_pay").value,status=$("#e_status").value,vacAllot=parseFloat($("#e_allot").value)||0,role=$("#e_admin").checked?"admin":"employee",active=$("#e_active").checked,salaried=$("#e_salaried").checked,notesTime=$("#e_notes").checked,bday=$("#e_bday").value.trim(),getsPto=$("#e_pto").checked;
   const first=name.split(" ")[0],last=name.split(" ").slice(1).join(" ");
-  if(editId){Object.assign(emp(editId),{name,first,last,email,phone,payType,status,vacAllot,role,active,salaried,notesTime,bday,getsPto});}
+  if(editId){
+    const cur=emp(editId);
+    const emailChanged=cur.hasLogin && (cur.email||"").trim().toLowerCase()!==email.toLowerCase();
+    Object.assign(cur,{name,first,last,email,phone,payType,status,vacAllot,role,active,salaried,notesTime,bday,getsPto});
+    if(emailChanged){ cur.hasLogin=false; flash(`${first}'s login email changed — have them tap "First time here" to set a password with the new email`); }
+  }
   else DB.employees.push({id:uid("e"),name,first,last,email,phone,payType,status,vacAllot,role,active,salaried,notesTime,bday,getsPto});
   save();closeModal();render();
 }
