@@ -24,7 +24,13 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0}
-  body{background:var(--cream);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  body{background:var(--cream);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overscroll-behavior-y:contain}
+  /* pull-to-refresh */
+  #ptr{height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--cream);color:var(--teal);transition:height .18s ease}
+  #ptr .ptr-ico{font-size:20px;opacity:.55}
+  #ptr.ready .ptr-ico{opacity:1;font-weight:800;transform:scale(1.15)}
+  #ptr.spin .ptr-ico{animation:ptrspin .7s linear infinite;opacity:1}
+  @keyframes ptrspin{to{transform:rotate(360deg)}}
   h1,h2,h3,h4{font-family:"Playfair Display",Georgia,serif;margin:0}
   button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit;font-size:14px}
@@ -669,7 +675,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=7;   // bumped on breaking sync changes; the database rejects writes from older app code
+const APP_VER=8;   // bumped on breaking sync changes; the database rejects writes from older app code
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -857,6 +863,39 @@ async function installApp(){
   </div><div class="foot"><button class="btn" onclick="closeModal()">Got it</button></div>`);
 }
 
+/* ===== Pull down to refresh (like Instagram) ===== */
+let PTR_Y=0, PTR_ON=false, PTR_BUSY=false;
+async function manualRefresh(){
+  try{
+    if(SB&&AUTHED){
+      const prevBase=BASE;
+      const remote=await cloudGet();
+      if(remote){
+        if(!CLOUD&&prevBase){ DB=mergeStates(prevBase,DB,remote); CLOUD=true; await save(true); }
+        else { DB=remote; CLOUD=true; }
+        normalizeDB();
+      }
+    }
+  }catch(e){}
+  render(); flash("Up to date ✓");
+}
+document.addEventListener("touchstart",(e)=>{ if(!SESSION||PTR_BUSY) return; if(window.scrollY<=0){ PTR_Y=e.touches[0].clientY; PTR_ON=true; } },{passive:true});
+document.addEventListener("touchmove",(e)=>{
+  if(!PTR_ON) return;
+  const dy=e.touches[0].clientY-PTR_Y, el=$("#ptr");
+  if(el&&dy>12&&window.scrollY<=0){ el.style.height=Math.min(64,dy/2.4)+"px"; el.classList.toggle("ready",dy>120); }
+},{passive:true});
+document.addEventListener("touchend",async ()=>{
+  if(!PTR_ON) return; PTR_ON=false;
+  const el=$("#ptr"); if(!el) return;
+  if(el.classList.contains("ready")&&!PTR_BUSY){
+    PTR_BUSY=true; el.classList.add("spin"); el.style.height="44px";
+    try{ await manualRefresh(); }finally{ PTR_BUSY=false; }
+    return;   // render() rebuilt the bar in its resting state
+  }
+  el.style.height="0"; el.classList.remove("ready","spin");
+});
+
 /* ===== Push notifications to phones ===== */
 const VAPID_PUBLIC="BHu-Bpph7PxZe2LvqB3JxM2fj38Q5NMYbF2qZPPTKR09zeaJlbQ2ztyxT4h5EHo0OWuq7Jd-59XUNsT_-d6PyTs";
 function urlB64ToU8(s){ const pad="=".repeat((4-s.length%4)%4); const b=atob((s+pad).replace(/-/g,"+").replace(/_/g,"/")); const a=new Uint8Array(b.length); for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return a; }
@@ -999,6 +1038,7 @@ function render(){
   if(!tabs.find(t=>t[0]===TAB)) TAB=tabs[0][0];
   const ys=allYears();
   $("#root").innerHTML=`
+   <div id="ptr"><span class="ptr-ico">↻</span></div>
    ${CLOUD?"":`<div class="preview-bar">Running on this device — saving locally. <b>Connects to your live shared data once it's on your web address.</b></div>`}
    <header class="app"><div class="head-in">
      <div class="brand"><img src="${LOGO_WHITE}" class="brand-logo" alt="First Rehabilitation"><span class="sub">Team Time Portal</span></div>
@@ -1254,7 +1294,7 @@ function viewChat(v){
 /* ===== Mobile bottom navigation ===== */
 function bottomNavHTML(admin,me){
   const items = admin
-    ? [["dash","🏠","Home"],["timesheets","🕒","Sheets"],["timeoff","🌴","Time off"],["chat","💬","Messages"]]
+    ? [["dash","🏠","Home"],["timesheets","🕒","Sheets"],["timeoff","🌴","Time off"],["calendar","📅","Calendar"],["chat","💬","Chat"]]
     : (me.salaried
        ? [["me","🏠","Home"],["mytime","🌴","Time off"],["calendar","📅","Calendar"],["chat","💬","Messages"]]
        : [["me","🏠","Home"],["timesheet","🕒","Timesheet"],["mytime","🌴","Time off"],["chat","💬","Messages"]]);
@@ -1265,7 +1305,7 @@ function bottomNavHTML(admin,me){
 function openMoreNav(){
   const me=emp(SESSION), admin=me.role==="admin";
   const rest = admin
-    ? [["payroll","💵","Payroll"],["calendar","📅","Team Calendar"],["photos","📷","Photos"],["employees","👥","Employees"],["inbox","📥","Inbox"]]
+    ? [["payroll","💵","Payroll"],["photos","📷","Photos"],["employees","👥","Employees"],["inbox","📥","Inbox"]]
     : (me.salaried?[["photos","📷","Photos"]]:[["calendar","📅","Team Calendar"],["photos","📷","Photos"]]);
   openModal(`<h3>More</h3><div class="body"><div class="more-grid">
     ${rest.map(([id,ico,lbl])=>`<button class="more-tile" onclick="closeModal();setTab('${id}')"><span>${ico}</span>${lbl}</button>`).join("")}
@@ -1293,6 +1333,7 @@ function viewAdminDash(v){
    ${pend?`<div class="card" style="margin-top:14px;border-color:#f0d9ad;background:#fffaf0">
       <b style="color:var(--pending)">${pend} time-off ${pend===1?"request":"requests"} awaiting your review.</b>
       <button class="btn sm" style="margin-left:10px" onclick="setTab('timeoff')">Review now</button></div>`:""}
+   ${dashTimesheetsHTML()}
    <div class="dash-2col">
      <div>
        <div class="section-title sm"><h2>📣 What's happening</h2><button class="btn sm" onclick="openAnnounce()">＋ Post</button></div>
@@ -1611,6 +1652,27 @@ async function saveNotify(){
 function testNotify(){
   try{ navigator.serviceWorker.ready.then(reg=>reg.showNotification("First Rehab",{body:"Notifications are working 🎉",icon:"/icons/icon-192.png"})); }
   catch(e){ try{ new Notification("First Rehab",{body:"Notifications are working 🎉"}); }catch(e2){ flash("Couldn't show a test notification"); } }
+}
+/* Submitted timesheets waiting for approval — shown on the admin dashboard */
+function tsAwaiting(){ return (DB.timesheets||[]).filter(t=>t.submitted&&!t.approvedBy&&emp(t.empId)); }
+function reviewSheet(empId,startStr){ tsPeriod=parseD(startStr); tsDetailEmp=empId; setTab("timesheets"); }
+function dashTimesheetsHTML(){
+  const waiting=tsAwaiting().sort((a,b)=>cmpDate(a.start,b.start));
+  const doneRecent=(DB.timesheets||[]).filter(t=>t.approvedBy&&emp(t.empId)).sort((a,b)=>(b.approvedTs||0)-(a.approvedTs||0)).slice(0,8);
+  const row=t=>{ const e=emp(t.empId); const total=round(tsTotal(t,true));
+    return `<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px">
+      <div class="avatar">${e.photo?`<img src="${e.photo}" alt="">`:initials(e.name)}</div>
+      <div style="flex:1;min-width:140px"><b>${esc(e.name)}</b><div style="color:var(--muted);font-size:12.5px">${esc(t.start)} – ${esc(t.days&&t.days.length?t.days[t.days.length-1].date:"")} · ${total} h</div></div>
+      <div class="row-actions"><button class="btn sm ghost" onclick="reviewSheet('${t.empId}','${esc(t.start)}')">Review</button>
+      <button class="btn sm" onclick="approveTS('${t.empId}','${esc(t.start)}')">✓ Approve</button></div>
+    </div>`; };
+  return `
+   ${waiting.length?`<div class="section-title sm" style="margin-top:18px"><h2>🕒 Timesheets to approve · ${waiting.length}</h2></div>${waiting.map(row).join("")}`
+     :`<div class="card" style="margin-top:14px;color:var(--muted)">🕒 No timesheets waiting for approval.</div>`}
+   ${doneRecent.length?`<details class="logwrap" style="margin-top:10px"><summary>✓ Completed (${doneRecent.length} recent)</summary>
+     ${doneRecent.map(t=>{ const e=emp(t.empId); return `<div class="card" style="display:flex;align-items:center;gap:10px;margin-top:8px;opacity:.75">
+       <div style="flex:1"><b>${esc(e.name)}</b> <span style="color:var(--muted);font-size:12.5px">· ${esc(t.start)} · ${round(tsTotal(t,true))} h · approved by ${esc((t.approvedBy||"").split(" ")[0])}</span></div>
+       <button class="btn sm ghost" onclick="reviewSheet('${t.empId}','${esc(t.start)}')">View</button></div>`; }).join("")}</details>`:""}`;
 }
 function cardFor(e){
   const used=ptoUsed(e.id,YEAR),base=+e.vacAllot||0,earned=earnedVac(e.id,YEAR),allot=base+earned,pct=allot>0?Math.min(100,used/allot*100):(used>0?100:0),over=allot>0&&used>allot,left=allot-used;
@@ -2038,7 +2100,7 @@ function delRow(kind,id){if(!confirm("Delete this entry?"))return;DB[kind]=DB[ki
 /* ================= TIMESHEETS ================= */
 let ROUND_MODE = (DB && DB.roundMode) || "nearest";     // 'up' | 'nearest' | 'off'
 const CLINIC = (DB && DB.clinic) || {name:"First Rehabilitation",addr1:"733 U.S. Highway One, Suite 2A",addr2:"North Palm Beach, FL 33408"};
-const ANCHOR = new Date(2026,5,29);                 // Mon Jun 29, 2026 → period runs to Sun Jul 12; rolls every other Monday
+const ANCHOR = new Date(2026,5,22);                 // Mon Jun 22, 2026 → period runs to Sun Jul 5; next cycle starts Mon Jul 6; rolls every other Monday
 let tsPeriod = periodStartFor(new Date());          // current period start (Date)
 let tsAdminEmp = null;                              // admin: which employee's sheet
 let tsDetailEmp = null;                             // admin: open a single sheet (null = roster list)
@@ -2172,14 +2234,17 @@ function renderAdminRoster(v){
   const rows=emps.map(e=>{const ts=getTS(e.id,tsPeriod); const started=tsHasEntries(ts);
     const st=ts.approvedBy?"approved":ts.submitted?"submitted":started?"inprogress":"notstarted";
     return {e,ts,st,started,total:tsTotal(ts,true)};});
-  const done=rows.filter(r=>r.st==="submitted"||r.st==="approved");
+  const needs=rows.filter(r=>r.st==="submitted");
+  const completed=rows.filter(r=>r.st==="approved");
   const waiting=rows.filter(r=>r.st==="inprogress"||r.st==="notstarted");
   const nInProg=rows.filter(r=>r.st==="inprogress").length, nNot=rows.filter(r=>r.st==="notstarted").length;
   const line=(r)=>`<tr class="clickrow" onclick="openAdminSheet('${r.e.id}')">
       <td><b style="${r.st==="notstarted"?'color:var(--muted)':''}">${esc(r.e.name)}</b></td>
       <td>${statusPill(r.ts)}</td>
       <td class="num">${r.started?round(r.total)+' h':'—'}</td>
-      <td class="num"><button class="btn sm ghost" onclick="event.stopPropagation();openAdminSheet('${r.e.id}')">${r.started?'Open':'Enter'} ›</button></td>
+      <td class="num"><div class="row-actions" style="justify-content:flex-end">
+        ${r.st==="submitted"?`<button class="btn sm" onclick="event.stopPropagation();approveTS('${r.e.id}','${esc(r.ts.start)}')">✓ Approve</button>`:""}
+        <button class="btn sm ghost" onclick="event.stopPropagation();openAdminSheet('${r.e.id}')">${r.started?'Open':'Enter'} ›</button></div></td>
     </tr>`;
   const table=(list)=>`<div class="tbl-wrap"><table>
       <thead><tr><th>Employee</th><th>Status</th><th class="num">Period hrs</th><th></th></tr></thead>
@@ -2188,13 +2253,15 @@ function renderAdminRoster(v){
    <div class="section-title" style="margin-bottom:6px"><h2>Timesheets</h2><span class="hint">${periodLabel(tsPeriod)}</span></div>
    <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${roundSel()}<button class="btn ghost" onclick="clearPeriodTS()">🧹 Clear this period</button></div>
    <div class="stat-strip" style="margin:4px 0 16px">
-     <div class="stat"><div class="k">Done · submitted</div><div class="v">${done.length}<span class="u">of ${emps.length}</span></div></div>
+     <div class="stat"><div class="k">Needs approval</div><div class="v">${needs.length}</div></div>
+     <div class="stat alt"><div class="k">Completed</div><div class="v">${completed.length}<span class="u">of ${emps.length}</span></div></div>
      <div class="stat alt"><div class="k">In progress</div><div class="v">${nInProg}</div></div>
      <div class="stat alt"><div class="k">Not started</div><div class="v">${nNot}</div></div>
    </div>
-   ${done.length?`<div class="rgroup ok">✓ Done · ${done.length}</div>${table(done)}`
-     :`<div class="rgroup" style="color:var(--muted)">No timesheets submitted yet for this period.</div>`}
-   ${waiting.length?`<div class="rgroup warn" style="margin-top:18px">⚠︎ Still to do · ${waiting.length}</div>${table(waiting)}`:``}`;
+   ${needs.length?`<div class="rgroup warn">🕒 Needs approval · ${needs.length}</div>${table(needs)}`
+     :`<div class="rgroup" style="color:var(--muted)">Nothing waiting for approval for this period.</div>`}
+   ${waiting.length?`<div class="rgroup warn" style="margin-top:18px">⚠︎ Still to do · ${waiting.length}</div>${table(waiting)}`:``}
+   ${completed.length?`<details class="logwrap" style="margin-top:18px"><summary>✓ Completed · ${completed.length}</summary>${table(completed)}</details>`:``}`;
 }
 
 /* ---- inline editable grid for one employee ---- */
@@ -2204,9 +2271,11 @@ function renderAdminDetail(v){
   v.innerHTML = `<button class="btn ghost sm" onclick="backToRoster()">‹ All timesheets</button>` + holder.innerHTML;
 }
 
-function submitTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; save();render();flash("Timesheet submitted"); }
+function submitTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; save();render();flash("Timesheet submitted");
+  if(empId===SESSION) sendPushNotify({kind:"timeoff",title:"🕒 Timesheet submitted",body:`${emp(empId).name} submitted their timesheet for ${startStr}`,url:"/"}); }
 function unsubmitTS(empId,startStr){ const ts=findTS(empId,startStr); if(ts){ts.submitted=false;ts.approvedBy="";save();render();} }
-function approveTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; ts.approvedBy=emp(SESSION).name; const ev=round(periodOT(ts,true)); save();render();flash(ev>0&&getsPTO(empId)?`Approved · ${ev}h added to PTO`:"Approved"); }
+function approveTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; ts.approvedBy=emp(SESSION).name; ts.approvedTs=Date.now(); const ev=round(periodOT(ts,true)); save();render();flash(ev>0&&getsPTO(empId)?`Approved · ${ev}h added to PTO`:"Approved");
+  const who=emp(empId); if(who&&who.email&&empId!==SESSION) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"✅ Timesheet approved",body:`Your timesheet for ${startStr} was approved`,url:"/"}); }
 function unapproveTS(empId,startStr){ const ts=findTS(empId,startStr); if(ts){ts.approvedBy="";save();render();} }
 
 /* ---- day editor (Morning / Afternoon shifts, auto AM-PM) ---- */
