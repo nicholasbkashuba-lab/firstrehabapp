@@ -174,6 +174,10 @@
   @media(max-width:560px){.to-note{display:block}}
   .to-note.always{display:block}
   .pto-sub{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap}
+  .day-chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px;min-height:30px;align-items:center}
+  .day-chip{display:inline-flex;align-items:center;gap:7px;background:#eef4f2;border:1px solid #cfe0da;color:var(--teal);font-weight:700;font-size:13px;border-radius:999px;padding:5px 6px 5px 12px}
+  .day-chip button{background:rgba(14,58,71,.12);border:none;border-radius:50%;width:20px;height:20px;font-size:10px;color:var(--teal);cursor:pointer;line-height:1}
+  .day-chip button:hover{background:var(--warn);color:#fff}
   .pto-row{cursor:pointer}
   .pto-row:hover td{background:#fdfaf2}
   .prof-pto{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:var(--teal-grad,linear-gradient(160deg,#17566a,#0E3A47));border-radius:14px;padding:14px 12px;margin:4px 0 2px}
@@ -775,7 +779,7 @@ const LOGO_WHITE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAADcCAYAAA
 const CAL_2026 = [{"empId":"e39","date":"2/9/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"2/9/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"3/31/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"3/31/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"5/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/4/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"AM off"},{"empId":"e46","date":"5/4/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/29/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Leaves ~noon"},{"empId":"e46","date":"5/29/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"4/1/2026","end":"4/2/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"4/1/2026","end":"4/2/2026","hours":16,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/21/2026","end":"5/22/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"5/21/2026","end":"5/22/2026","hours":16,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e40","date":"1/23/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Half day"},{"empId":"e40","date":"4/21/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e40","date":"5/12/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"2/6/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Out PM"},{"empId":"e47","date":"4/7/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"4/23/2026","end":"4/24/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"7/15/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"7/22/2026","end":"7/24/2026","hours":24,"type":"Vacation","status":"approved","note":"Wedding"},{"empId":"e31","date":"3/9/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"3/11/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"3/13/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"4/17/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"6/30/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e37","date":"3/13/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e37","date":"5/15/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e37","date":"5/18/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"3/16/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Half day (afternoon)"},{"empId":"e45","date":"4/6/2026","end":"4/8/2026","hours":24,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"7/27/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"8/3/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"10/1/2026","end":"10/2/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"2/23/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"2/25/2026","end":"2/26/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"4/9/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Half day"},{"empId":"e60","date":"4/10/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"4/13/2026","end":"4/15/2026","hours":24,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"6/16/2026","end":"6/18/2026","hours":24,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e51","date":"3/27/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e51","date":"6/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e51","date":"6/29/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e50","date":"3/16/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e50","date":"8/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e50","date":"8/28/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"}];
 const CAL_ANN = [{"title":"In-service training \u2014 Tues, July 13","body":"In-service scheduled for Tuesday, July 13. (Dynasplint rep \u2014 please confirm final time.)","dateStr":"Jul 13, 2026"},{"title":"CPR certification class \u2014 June 8 & 11","body":"CPR class offered June 8 and June 11. Let Nick know if you need to certify or recertify.","dateStr":"Jun 8, 2026"}];
 const KEY="firstrehab_portal_v11";
-const TYPES=["Vacation","PTO","Sick","Personal","Appointment","Family","Bereavement","Education","Holiday","Unpaid"];
+const TYPES=["Vacation","Sick","Personal","Appointment","Family","Bereavement","Education","Holiday","Unpaid"];
 const TYPE_COLOR={Vacation:"#F4A261",PTO:"#5B8CA0",Sick:"#c07a8c",Personal:"#b39a4e",Appointment:"#2E86AB",Family:"#8E44AD",Bereavement:"#7a7a7a",Education:"#2f8f6b",Holiday:"#3f9c78",Unpaid:"#9aa0a3"};
 const TYPE_ICON={Vacation:"🌴",PTO:"🌤️",Sick:"🤒",Personal:"🏠",Appointment:"🩺",Family:"👪",Bereavement:"🕊️",Education:"🎓",Holiday:"🎉",Unpaid:"⏸️"};
 const typeOpts=(sel)=>TYPES.map(t=>`<option value="${t}" ${sel===t?"selected":""}>${TYPE_ICON[t]||""} ${t}</option>`).join("");
@@ -922,7 +926,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=22;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=23;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1276,6 +1280,21 @@ async function quickEnablePush(){
 const $=s=>document.querySelector(s);
 /* record an explicit, intentional deletion — without this the server resurrects the record */
 function tomb(id){ if(!id||!DB) return; DB.tombstones=DB.tombstones||[]; if(!DB.tombstones.some(t=>t.id===id)) DB.tombstones.push({id,ts:Date.now()}); }
+/* human string for when a time-off entry happens — supports ranges AND specific-days lists */
+function toWhen(t){
+  if(t&&Array.isArray(t.days)&&t.days.length){
+    const shorten=d=>{const p=String(d).split("/");return p[0]+"/"+p[1];};
+    const ds=t.days.slice().sort((a,b)=>cmpDate(a,b));
+    return ds.length<=3?ds.map(shorten).join(" · "):`${shorten(ds[0])} · ${shorten(ds[1])} +${ds.length-2} more days`;
+  }
+  return t?`${t.date}${t.end?` – ${t.end}`:""}`:"";
+}
+/* does a time-off entry cover this calendar date? */
+function toCovers(t,date){
+  if(Array.isArray(t.days)&&t.days.length) return t.days.some(d=>{const dd=toDate(d);return dd.getFullYear()===date.getFullYear()&&dd.getMonth()===date.getMonth()&&dd.getDate()===date.getDate();});
+  const s=toDate(t.date), e=t.end?toDate(t.end):s;
+  return date>=stripT(s)&&date<=stripT(e);
+}
 const uid=p=>p+Math.random().toString(36).slice(2,7);
 const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const emp=id=>DB.employees.find(e=>e.id===id);
@@ -1317,7 +1336,7 @@ function allYears(){const ys=new Set([2025,2026]);DB.timeoff.forEach(t=>{const y
 
 function getsPTO(id){ const e=emp(id); return !!(e&&e.getsPto); }
 function vacUsed(id,y){return DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===y&&t.status==="approved").reduce((s,t)=>s+(+t.hours||0),0);}
-/* PTO hours actually used (excludes unpaid / company holidays) — only meaningful for PTO-eligible staff */
+/* PTO hours actually used (excludes unpaid / company holidays) — only meaningful for staff with balances */
 function ptoUsed(id,y){return DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===(y||YEAR)&&t.status==="approved"&&t.type!=="Unpaid"&&t.type!=="Holiday").reduce((s,t)=>s+(+t.hours||0),0);}
 function otStats(id,y){const r=DB.hours.filter(h=>h.empId===id&&(yearOf(h.end)||yearOf(h.start))===y);const e=r.reduce((s,h)=>s+(+h.ot||0),0),u=r.reduce((s,h)=>s+(+h.otUsed||0),0);return{earned:e,used:u,bal:e-u};}
 /* overtime earned on timesheets (over 80 worked / pay period) — for us this becomes accrued VACATION, credited on approval */
@@ -1325,7 +1344,7 @@ function tsOTYear(id,y){ return DB.timesheets.filter(t=>t.empId===id && yearOf(t
 function earnedVac(id,y){ const e=emp(id); if(!e||!e.getsPto) return 0; return DB.timesheets.filter(t=>t.empId===id && t.approvedBy && yearOf(t.start)===(y||YEAR)).reduce((s,t)=>s+periodOT(t,true),0); }
 /* banked overtime = manual starting balance + OT earned on approved timesheets — all counts toward PTO */
 function bankOT(id,y){ const e=emp(id); if(!e) return 0; return (+e.otBank||0) + earnedVac(id,y||YEAR); }
-/* combined PTO pool = contract PTO days + banked overtime */
+/* combined time-off pool = contract PTO days + banked overtime */
 function allowedVac(id){ const e=emp(id); if(!e||!e.getsPto) return 0; return (+e.vacAllot||0) + bankOT(id,YEAR); }
 function otBal(id){ return bankOT(id,YEAR); }
 /* upcoming birthdays */
@@ -1673,8 +1692,8 @@ function viewAdminDash(v){
    <div class="section-title"><h2>Team dashboard</h2><span class="hint">${dateStr}</span></div>
    <div class="stat-strip">
      <div class="stat"><div class="k">Team Members</div><div class="v">${active.length}</div></div>
-     <div class="stat alt"><div class="k">On PTO</div><div class="v">${ptoStaff.length}<span class="u">of ${active.length}</span></div></div>
-     <div class="stat alt"><div class="k">PTO Used ${YEAR}</div><div class="v">${round(ptoUsedTot)}<span class="u">hrs</span></div></div>
+     <div class="stat alt"><div class="k">With balance</div><div class="v">${ptoStaff.length}<span class="u">of ${active.length}</span></div></div>
+     <div class="stat alt"><div class="k">Used ${YEAR}</div><div class="v">${round(ptoUsedTot)}<span class="u">hrs</span></div></div>
      <div class="stat"><div class="k">Pending Requests</div><div class="v">${pend}</div></div>
    </div>
    ${me.getsPto?`<div class="card" style="margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-left:4px solid var(--gold)">
@@ -1692,8 +1711,8 @@ function viewAdminDash(v){
        ${bdayHTML(6)}
      </div>
    </div>
-   <div class="section-title"><h2>PTO staff · ${YEAR}</h2><span class="hint">Hours used vs. allowance</span></div>
-   <div class="grid cards">${ptoStaff.length?ptoStaff.map(cardFor).join(""):`<div class="card" style="color:var(--muted)">No one is marked as receiving PTO. Set it in the Time Off tab.</div>`}</div>`;
+   <div class="section-title"><h2>Time-off balances · ${YEAR}</h2><span class="hint">Hours used vs. allowance</span></div>
+   <div class="grid cards">${ptoStaff.length?ptoStaff.map(cardFor).join(""):`<div class="card" style="color:var(--muted)">No one has a time-off balance. Set it in the Time Off tab.</div>`}</div>`;
 }
 function annPast(a){ if(!a.date) return false; const t=new Date(); t.setHours(0,0,0,0); return toDate(a.date) < t; }
 function feedWhen(dateMdy,time){ if(!dateMdy) return null; const d=toDate(dateMdy); if(time){ const t=to24(time); if(t){ const p=t.split(":"); d.setHours(+p[0],+p[1],0,0); } } return d; }
@@ -1815,7 +1834,7 @@ function viewInbox(v){
 
    <div class="section-title sm"><h2>🕒 Time-off requests</h2><span class="hint">${pendTO.length} pending</span></div>
    ${pendTO.length?`<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Employee</th><th>Dates</th><th>Type</th><th class="num">Hours</th><th></th></tr></thead><tbody>
-     ${pendTO.map(t=>`<tr><td><b>${who(t.empId)}</b></td><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td>
+     ${pendTO.map(t=>`<tr><td><b>${who(t.empId)}</b></td><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td>
        <td><div class="row-actions"><button class="btn tiny" onclick="approve('${t.id}')">Approve</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">Decline</button></div></td></tr>`).join("")}
      </tbody></table></div>`:`<div class="card" style="margin-bottom:20px;color:var(--muted)">No pending time-off requests.</div>`}
 
@@ -1905,7 +1924,7 @@ function openProfile(){
     </div>
     ${me.getsPto?(()=>{const al=allowedVac(me.id),bank=bankOT(me.id,YEAR),us=ptoUsed(me.id,YEAR),lf=al-us;return `
     <div class="prof-pto">
-      <div><span class="k">Total PTO</span><b>${round(al)} h</b></div>
+      <div><span class="k">Total time off</span><b>${round(al)} h</b></div>
       <div><span class="k">Banked OT</span><b>${round(bank)} h</b></div>
       <div><span class="k">Used</span><b>${round(us)} h</b></div>
       <div><span class="k">Left</span><b style="color:${lf<0?"#f4a4a4":"#bfe8d4"}">${round(lf)} h</b></div>
@@ -2036,7 +2055,7 @@ function daysOfH(h){ return Math.round((h/8)*10)/10; }
 function dashTimeoffHTML(){
   const pend=(DB.timeoff||[]).filter(t=>t.status==="pending"&&emp(t.empId)).sort((a,b)=>(a.ts||0)-(b.ts||0));
   if(!pend.length) return `<div class="card" style="margin-top:14px;color:var(--muted)">🌴 No time-off requests waiting.</div>`;
-  const row=t=>{ const e=emp(t.empId); const span=t.date+(t.end?` – ${t.end}`:""); const d=daysOfH(+t.hours||0);
+  const row=t=>{ const e=emp(t.empId); const span=toWhen(t); const d=daysOfH(+t.hours||0);
     return `<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;border-left:4px solid var(--pending)">
       <div class="avatar">${e.photo?`<img src="${e.photo}" alt="">`:initials(e.name)}</div>
       <div style="flex:1;min-width:160px">
@@ -2053,7 +2072,7 @@ function dashTimeoffHTML(){
 function declineTO(id){
   const t=(DB.timeoff||[]).find(x=>x.id===id); if(!t)return;
   if(!confirm("Decline this time-off request?"))return;
-  const who=emp(t.empId), span=t.date+(t.end?` – ${t.end}`:"");
+  const who=emp(t.empId), span=toWhen(t);
   tomb(id); DB.timeoff=DB.timeoff.filter(x=>x.id!==id); save(); render(); flash("Request declined");
   if(who&&who.email) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"Time off not approved",body:`Your request for ${span} (${round(t.hours)}h ${t.type}) wasn't approved — see Nick with questions.`,url:"/"});
 }
@@ -2063,12 +2082,12 @@ function cardFor(e){
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div><h3>${esc(e.name)}</h3><div class="emp-meta">${e.status==="FT"?'<span class="ft-tag">Full time</span>':'<span class="ft-tag pt-tag">Part time</span>'} · ${esc(e.payType)}</div></div>
     </div>
-    <div class="bal-row"><span>PTO used</span><span><b>${round(used)}</b> / ${round(allot)} h</span></div>
+    <div class="bal-row"><span>Time off used</span><span><b>${round(used)}</b> / ${round(allot)} h</span></div>
     <div class="bar ${over?"over":""}"><span style="width:${pct}%"></span></div>
     <div class="bal-row"><span>${over?"Over by":"Remaining"}</span><b style="color:${over?"var(--warn)":"var(--ok)"}">${round(Math.abs(left))} h</b></div>
     <div class="chips">
       <span class="chip click" onclick="openTimeOff('${e.id}')">＋ Log time off</span>
-      ${bank?`<span class="chip ot" title="${round(base)} PTO + ${round(bank)} banked OT">incl. ${round(bank)}h banked OT</span>`:""}
+      ${bank?`<span class="chip ot" title="${round(base)} base + ${round(bank)} banked OT">incl. ${round(bank)}h banked OT</span>`:""}
     </div></div>`;
 }
 let AF={emp:"",type:"",q:""};
@@ -2080,8 +2099,8 @@ function ptoDetailHTML(id){
   const daysOf=h=>Math.round((h/8)*10)/10;
   const rows=DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===YEAR&&t.type!=="Unpaid"&&t.type!=="Holiday").sort((a,b)=>cmpDate(b.date,a.date));
   return `
-   <button class="btn ghost sm" onclick="backPtoDetail()">‹ All PTO staff</button>
-   <div class="section-title" style="margin-top:10px"><h2>${esc(e.name)} · PTO ${YEAR}</h2><span class="hint">${e.status==="FT"?"Full-time":"Part-time"}</span></div>
+   <button class="btn ghost sm" onclick="backPtoDetail()">‹ All balances</button>
+   <div class="section-title" style="margin-top:10px"><h2>${esc(e.name)} · Time off ${YEAR}</h2><span class="hint">${e.status==="FT"?"Full-time":"Part-time"}</span></div>
    <div class="pto-detail-grid">
      <div class="card"><div class="k2">Total available</div><div class="pd-big">${round(al)}<small>h</small></div><div class="pd-sub">${daysOf(al)} days · ${round(base)} PTO + ${round(bank)} OT</div></div>
      <div class="card"><div class="k2">Used</div><div class="pd-big">${round(us)}<small>h</small></div><div class="pd-sub">${daysOf(us)} days</div></div>
@@ -2089,16 +2108,16 @@ function ptoDetailHTML(id){
    </div>
    <div class="bar ${over?'over':''}" style="margin:2px 0 14px"><span style="width:${pct}%"></span></div>
    <div class="card" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
-     <div class="field" style="margin:0"><label>PTO days (contract hrs)</label><input class="allot-inp" type="number" step="0.5" min="0" value="${round(base)}" onchange="setAllot('${id}',this.value)"></div>
+     <div class="field" style="margin:0"><label>Time off (contract hrs)</label><input class="allot-inp" type="number" step="0.5" min="0" value="${round(base)}" onchange="setAllot('${id}',this.value)"></div>
      <div class="field" style="margin:0"><label>Banked overtime (hrs)</label><input class="allot-inp" type="number" step="0.25" min="0" value="${round(man)}" onchange="setOtBank('${id}',this.value)"></div>
-     <div style="flex:1;min-width:150px;font-size:12px;color:var(--muted)">Combined into one PTO pool of <b>${round(al)} h</b>.${earned>0?` Includes <b>+${round(earned)} h</b> earned on approved timesheets (updates automatically).`:` Any overtime on approved timesheets is added here automatically.`}</div>
+     <div style="flex:1;min-width:150px;font-size:12px;color:var(--muted)">Combined into one time-off pool of <b>${round(al)} h</b>.${earned>0?` Includes <b>+${round(earned)} h</b> earned on approved timesheets (updates automatically).`:` Any overtime on approved timesheets is added here automatically.`}</div>
    </div>
-   <div class="section-title sm"><h2>PTO days — taken &amp; requested</h2><button class="btn" onclick="openTimeOff('${id}')">＋ Add PTO</button></div>
+   <div class="section-title sm"><h2>Days — taken &amp; requested</h2><button class="btn" onclick="openTimeOff('${id}')">＋ Add time off</button></div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
-   ${rows.length?rows.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
+   ${rows.length?rows.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
      <td>${t.status==="pending"?`<span class="st-pill st-pending">Pending</span>`:`<span class="st-pill st-approved">Approved</span>`}</td><td class="note-cell">${esc(t.note||"")}</td>
      <td><div class="row-actions">${t.status==="pending"?`<button class="btn tiny" onclick="approve('${t.id}')">Approve</button>`:""}<button class="btn sm ghost" onclick="openTimeOff(null,'${t.id}')">Edit</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">Delete</button></div></td></tr>`).join("")
-    :`<tr><td colspan="7"><div class="empty"><div class="big">No PTO logged yet</div>Add their first PTO day.</div></td></tr>`}
+    :`<tr><td colspan="7"><div class="empty"><div class="big">No time off logged yet</div>Add their first day off.</div></td></tr>`}
    </tbody></table></div>`;
 }
 function viewAdminTimeoff(v){
@@ -2116,7 +2135,7 @@ function viewAdminTimeoff(v){
   const today=new Date(); today.setHours(0,0,0,0);
   const wkEnd=new Date(today); wkEnd.setDate(wkEnd.getDate()+(7-wkEnd.getDay()));
   /* insight tiles: who's out this week, pending count, team usage — no column duplicates */
-  const outThisWeek=new Set(DB.timeoff.filter(t=>{ if(t.status!=="approved")return false; const s=toDate(t.date),en=t.end?toDate(t.end):s; return s<=wkEnd&&en>=today; }).map(t=>t.empId));
+  const outThisWeek=new Set(DB.timeoff.filter(t=>{ if(t.status!=="approved")return false; for(let d=new Date(today);d<=wkEnd;d.setDate(d.getDate()+1)){ if(toCovers(t,d)) return true; } return false; }).map(t=>t.empId));
   const pendCt=DB.timeoff.filter(t=>t.status==="pending").length;
   let sumUsed=0,sumSched=0;
   const rep=ptoStaff.map(e=>{
@@ -2138,13 +2157,13 @@ function viewAdminTimeoff(v){
           </div>
         </div>
       </td>
-      <td class="num"><b style="font-size:16px">${round(r.allow)}</b><div class="pto-sub">${round(r.base)} PTO + ${round(r.bank)} banked</div></td>
+      <td class="num"><b style="font-size:16px">${round(r.allow)}</b><div class="pto-sub">${round(r.base)} base + ${round(r.bank)} banked</div></td>
       <td class="num">${round(r.used)}<div class="pto-sub">${daysOf(r.used)} days</div></td>
       <td class="num">${r.sched?`${round(r.sched)}<div class="pto-sub">${daysOf(r.sched)} days booked</div>`:`<span style="color:#c9c2b2">—</span>`}</td>
       <td class="num"><b style="font-size:17px;color:${r.over?"var(--warn)":"var(--ok)"}">${round(r.avail)}</b><div class="pto-sub">${r.over?"over-booked":daysOf(Math.max(0,r.avail))+" days"}</div></td>
       <td class="num" style="color:var(--muted);font-size:16px">›</td>
     </tr>`;}).join("");
-  const noPtoChips=noPto.map(e=>`<span class="nopto-chip">${esc(e.name)} <button onclick="togglePto('${e.id}')" title="Give PTO">＋ PTO</button></span>`).join("");
+  const noPtoChips=noPto.map(e=>`<span class="nopto-chip">${esc(e.name)} <button onclick="togglePto('${e.id}')" title="Track time off">＋ Add</button></span>`).join("");
   v.innerHTML=`
    <div class="section-title"><h2>Time off report · ${YEAR}</h2><span class="hint">Balances at a glance — tap anyone for their full report</span></div>
    <div class="stat-strip" style="margin:4px 0 14px">
@@ -2155,8 +2174,8 @@ function viewAdminTimeoff(v){
    </div>
    ${ptoStaff.length?`<div class="tbl-wrap" style="margin-bottom:16px"><table>
      <thead><tr><th>Employee</th><th class="num">Allowance</th><th class="num">Used</th><th class="num">Scheduled</th><th class="num">Available</th><th></th></tr></thead>
-     <tbody>${ptoBody}</tbody></table></div>`:`<div class="card" style="margin-bottom:16px;color:var(--muted)">No one is marked as receiving PTO yet. Add people from the list below.</div>`}
-   ${noPto.length?`<div class="section-title sm"><h2 style="font-size:15px">Not on PTO (${noPto.length})</h2></div><div class="nopto-wrap">${noPtoChips}</div>`:""}
+     <tbody>${ptoBody}</tbody></table></div>`:`<div class="card" style="margin-bottom:16px;color:var(--muted)">No one has a time-off balance yet. Add people from the list below.</div>`}
+   ${noPto.length?`<div class="section-title sm"><h2 style="font-size:15px">No time-off balance (${noPto.length})</h2></div><div class="nopto-wrap">${noPtoChips}</div>`:""}
 
    <details class="logwrap" style="margin-top:22px"><summary>All time-off entries · everyone (${rows.length})</summary>
    <div class="filters" style="margin-top:12px">
@@ -2167,7 +2186,7 @@ function viewAdminTimeoff(v){
    </div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Employee</th><th>Type</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
    ${rows.length?rows.map(t=>`<tr>
-       <td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td>${esc(empName(t.empId))}${getsPTO(t.empId)?"":' <span class="nopto-tag">no PTO</span>'}</td>
+       <td>${esc(toWhen(t))}</td><td>${esc(empName(t.empId))}${getsPTO(t.empId)?"":' <span class="nopto-tag">no balance</span>'}</td>
        <td><span class="type-pill t-${t.type}">${t.type}</span></td><td class="num">${round(t.hours)} h</td>
        <td>${t.status==="pending"?`<span class="st-pill st-pending">Pending</span>`:`<span class="st-pill st-approved">Approved</span>`}</td>
        <td class="note-cell">${esc(t.note||"")}</td>
@@ -2178,7 +2197,7 @@ function viewAdminTimeoff(v){
      :`<tr><td colspan="7"><div class="empty">No entries.</div></td></tr>`}
    </tbody></table></div></details>`;
 }
-function togglePto(id){ const e=emp(id); if(e){ e.getsPto=!e.getsPto; save(); render(); flash(e.getsPto?"Now on PTO":"Removed from PTO"); } }
+function togglePto(id){ const e=emp(id); if(e){ e.getsPto=!e.getsPto; save(); render(); flash(e.getsPto?"Time-off balance on":"Time-off balance off"); } }
 function setAllot(id,val){ const e=emp(id); if(e){ e.vacAllot=Math.max(0,parseFloat(val)||0); save(); render(); } }
 function setOtBank(id,val){ const e=emp(id); if(e){ e.otBank=Math.max(0,parseFloat(val)||0); save(); render(); flash("Banked OT updated"); } }
 function viewPayroll(v){
@@ -2190,7 +2209,7 @@ function viewPayroll(v){
   const anyNotes=rows.some(r=>r.note>0);
   const sum=k=>round(rows.reduce((s,r)=>s+r[k],0));
   const cols=["am","pm",...(anyNotes?["note"]:[]),"ot","pto","total"];
-  const head={am:"Morning",pm:"Afternoon",note:"Notes",ot:"OT",pto:"PTO used",total:"Total"};
+  const head={am:"Morning",pm:"Afternoon",note:"Notes",ot:"OT",pto:"Time off",total:"Total"};
   const body=rows.map(r=>`<tr class="clickrow" onclick="openAdminSheetFrom('${r.e.id}')">
       <td><b>${esc(r.e.name)}</b><div style="font-size:11px;color:${r.done?'var(--ok)':r.entered?'var(--pending)':'var(--warn)'}">${r.done?'✓ done':r.entered?'◐ in progress':'⚠︎ not started'}</div></td>
       ${cols.map(c=>`<td class="num ${c==='total'?'grand':''} ${c==='ot'&&r.ot>0?'otcell':''}">${r[c]?round(r[c]):'—'}</td>`).join("")}
@@ -2203,12 +2222,12 @@ function viewPayroll(v){
      <tbody>${body||`<tr><td colspan="${cols.length+1}" class="empty">No hourly staff.</td></tr>`}</tbody>
      <tfoot><tr><td>Totals</td>${cols.map(c=>`<td class="num ${c==='total'?'grand':''}">${sum(c)} h</td>`).join("")}</tr></tfoot>
    </table></div>
-   <p class="mini-hint">Tap a row to open and edit that person's timesheet. Times are rounded to the nearest quarter-hour. OT is hours worked over 80 in the pay period. For PTO-eligible staff it's added to their banked time when you approve the sheet.</p>`;
+   <p class="mini-hint">Tap a row to open and edit that person's timesheet. Times are rounded to the nearest quarter-hour. OT is hours worked over 80 in the pay period. For staff with balances it's added to their banked time when you approve the sheet.</p>`;
 }
 function openAdminSheetFrom(id){ TAB="timesheets"; tsDetailEmp=id; render(); window.scrollTo(0,0); }
 function exportPayrollCSV(){
   const emps=DB.employees.filter(e=>e.active && !e.salaried).sort((a,b)=>a.name.localeCompare(b.name));
-  const R=true; const rowsCsv=[["Employee","Morning","Afternoon","Notes","OT","PTO used","Total","Status"]];
+  const R=true; const rowsCsv=[["Employee","Morning","Afternoon","Notes","OT","Time off","Total","Status"]];
   emps.forEach(e=>{const ts=getTS(e.id,tsPeriod); rowsCsv.push([e.name,round(amHours(ts,R)),round(pmHours(ts,R)),round(noteHours(ts,R)),round(periodOT(ts,R)),round(tsVac(ts)),round(tsTotal(ts,R)),ts.approvedBy?"Approved":ts.submitted?"Submitted":tsHasEntries(ts)?"In progress":"Not started"]);});
   const csv=rowsCsv.map(r=>r.map(x=>{x=String(x);return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;}).join(",")).join("\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="FirstRehab_Payroll_"+fmtD(tsPeriod).replace(/\//g,"-")+".csv"; a.click();
@@ -2232,12 +2251,12 @@ function viewEmployees(v){
   const emps=DB.employees.slice().sort((a,b)=>(a.active===b.active?a.name.localeCompare(b.name):(a.active?-1:1)));
   v.innerHTML=`
    <div class="section-title"><h2>Employees</h2><span class="hint">${emps.length} people · add hires, set PTO, grant admin.</span><button class="btn ghost" onclick="openSecurity()" style="margin-left:auto;margin-right:8px">🔒 Login &amp; security</button><button class="btn" onclick="openEmp()">＋ Add employee</button></div>
-   <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Type</th><th>PTO</th><th class="num">Used ${YEAR}</th><th>Access</th><th>Login</th><th></th></tr></thead><tbody>
+   <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Type</th><th>Time off</th><th class="num">Used ${YEAR}</th><th>Access</th><th>Login</th><th></th></tr></thead><tbody>
    ${emps.map(e=>`<tr>
       <td><b>${esc(e.name)}</b></td>
       <td style="color:var(--muted);font-size:13px">${esc(e.email||"—")}</td>
       <td>${e.status==="FT"?'<span class="ft-tag">FT</span>':'<span class="ft-tag pt-tag">PT</span>'} <span style="color:var(--muted);font-size:12px">${esc(e.payType)}</span>${e.salaried?' <span class="ft-tag" style="background:#efe7d6;color:#8a6a2f">salaried</span>':''}</td>
-      <td>${e.getsPto?`<span class="st-pill st-approved">${round(e.vacAllot)} h</span>`:'<span class="nopto-tag">No PTO</span>'}</td>
+      <td>${e.getsPto?`<span class="st-pill st-approved">${round(e.vacAllot)} h</span>`:'<span class="nopto-tag">No balance</span>'}</td>
       <td class="num">${e.getsPto?round(ptoUsed(e.id,YEAR))+" h":"—"}</td>
       <td>${e.role==="admin"?'<span class="st-pill st-approved">Admin</span>':'<span style="color:var(--muted);font-size:12px">Employee</span>'}</td>
       <td>${e.hasLogin?'<span class="st-pill st-approved">Set ✓</span>':'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
@@ -2279,7 +2298,7 @@ function viewMyOverview(v){
    ${bdayHTML(5)}
    <div class="section-title sm" style="margin-top:6px"><h2>Recent time off</h2><button class="btn sm ghost" onclick="setTab('mytime')">See all</button></div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Hours</th><th>Status</th></tr></thead><tbody>
-   ${myTO.length?myTO.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td><td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td></tr>`).join("")
+   ${myTO.length?myTO.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td><td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td></tr>`).join("")
     :`<tr><td colspan="4"><div class="empty"><div class="big">No time off logged yet</div>Use “Request time off” above.</div></td></tr>`}
    </tbody></table></div>`;
 }
@@ -2305,10 +2324,10 @@ function viewMyTime(v){
   v.innerHTML=`
    <div class="section-title"><h2>My time off · ${YEAR}</h2><span class="hint">Edit any day — even past ones. Changes go to your manager for approval.</span><button class="btn" onclick="openRequest()">＋ Request time off</button></div>
    ${hasPto?`<div class="stat-strip" style="margin-bottom:12px">
-     <div class="stat"><div class="k">Available (PTO + banked OT)</div><div class="v">${round(allot)}<span class="u">hrs</span></div></div>
+     <div class="stat"><div class="k">Available (balance + banked OT)</div><div class="v">${round(allot)}<span class="u">hrs</span></div></div>
      <div class="stat alt"><div class="k">Used</div><div class="v">${round(takenH)}<span class="u">hrs</span></div></div>
      <div class="stat"><div class="k">Remaining</div><div class="v" style="color:${leftH<0?'var(--warn)':'var(--ok)'}">${round(leftH)}<span class="u">hrs</span></div></div>
-   </div>${bank>0?`<p class="mini-hint" style="margin:-2px 0 16px">Your ${round(allot)} h = ${round(+me.vacAllot||0)} h PTO + ${round(bank)} h banked overtime. Overtime you work on approved timesheets is added automatically.</p>`:""}`:""}
+   </div>${bank>0?`<p class="mini-hint" style="margin:-2px 0 16px">Your ${round(allot)} h = ${round(+me.vacAllot||0)} h + ${round(bank)} h banked overtime. Overtime you work on approved timesheets is added automatically.</p>`:""}`:""}
    <div class="stat-strip" style="margin-bottom:18px">
      <div class="stat"><div class="k">Taken off</div><div class="v">${daysOf(takenH)}<span class="u">days</span></div></div>
      <div class="stat alt"><div class="k">Hours taken</div><div class="v">${round(takenH)}<span class="u">hrs</span></div></div>
@@ -2316,7 +2335,7 @@ function viewMyTime(v){
      <div class="stat"><div class="k">Hours pending</div><div class="v">${round(pendH)}<span class="u">hrs</span></div></div>
    </div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
-   ${rows.length?rows.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
+   ${rows.length?rows.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
      <td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td><td class="note-cell">${esc(t.note||"")}</td>
      <td><div class="row-actions"><button class="btn sm ghost" onclick="openTimeOff(null,'${t.id}')">Edit</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">${t.status==="pending"?"Cancel":"Delete"}</button></div></td></tr>`).join("")
     :`<tr><td colspan="7"><div class="empty"><div class="big">No time off yet for ${YEAR}</div>Request your first day off.</div></td></tr>`}
@@ -2328,7 +2347,7 @@ function viewMyTime(v){
 function sameYMD(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
 function dayItems(date){
   const y=date.getFullYear(),m=date.getMonth(),dn=date.getDate();
-  const offs=DB.timeoff.filter(t=>{ if(t.status!=="approved")return false; const s=toDate(t.date),e=t.end?toDate(t.end):s; return date>=stripT(s)&&date<=stripT(e); });
+  const offs=DB.timeoff.filter(t=>t.status==="approved"&&toCovers(t,date));
   const events=(DB.events||[]).filter(ev=>{ const s=toDate(ev.date),e=ev.end?toDate(ev.end):s; return date>=stripT(s)&&date<=stripT(e); }).sort((a,b)=>(to24(a.time||"")||"99").localeCompare(to24(b.time||"")||"99"));
   const bdays=DB.employees.filter(e=>e.active&&e.bday).filter(e=>{const p=String(e.bday).split("/");return +p[0]-1===m&&+p[1]===dn;});
   const holName=(usHolidays(y).find(h=>{const p=h.key.split("/");return +p[0]-1===m&&+p[1]===dn;})||{}).name||null;
@@ -2413,7 +2432,7 @@ function calDayHTML(){
   if(it.holName) out+=`<div class="dv-sect"><h4>Holiday</h4>${row("#3f9c78","🎉",it.holName,"US holiday")}</div>`;
   if(it.bdays.length) out+=`<div class="dv-sect"><h4>Birthdays</h4>${it.bdays.map(e=>row("#c98b2e","🎂",e.name,"Birthday 🎉")).join("")}</div>`;
   if(it.events.length) out+=`<div class="dv-sect"><h4>Events</h4>${it.events.map(ev=>row(eventColor(ev.id),"📌",ev.title,[ev.time?ev.time:"",ev.note||"","added by "+empName(ev.empId)].filter(Boolean).join(" · "),ev)).join("")}</div>`;
-  if(it.offs.length) out+=`<div class="dv-sect"><h4>Out of office</h4>${it.offs.map(t=>{const nm=emp(t.empId);return row(personColor(t.empId),TYPE_ICON[t.type]||"🌴",(nm?nm.name:"")+" — "+(t.type||"off"),[t.date+(t.end?" – "+t.end:""),t.note?'"'+t.note+'"':""].filter(Boolean).join(" · "));}).join("")}</div>`;
+  if(it.offs.length) out+=`<div class="dv-sect"><h4>Out of office</h4>${it.offs.map(t=>{const nm=emp(t.empId);return row(personColor(t.empId),TYPE_ICON[t.type]||"🌴",(nm?nm.name:"")+" — "+(t.type||"off"),[toWhen(t),t.note?'"'+t.note+'"':""].filter(Boolean).join(" · "));}).join("")}</div>`;
   if(!out) out=`<div class="dv-empty">Nothing on the calendar this day.<br><span style="font-size:13px">Tap ＋ to add something.</span></div>`;
   return `<div class="cal-dayview">
     <div class="dv-head"><div class="dv-dow">${calDay.toLocaleDateString("en-US",{weekday:"long"})}</div><div class="dv-date">${calDay.toLocaleDateString("en-US",{month:"long",day:"numeric"})}</div></div>
@@ -2459,60 +2478,129 @@ function openTimeOff(prefill,editId){
     : `<input type="hidden" id="m_emp" value="${SESSION}">`;
   openModal(`<h3>${editing?"Edit time off":"Log time off"}</h3><div class="body">
     ${empField}
-    <div class="row2"><div class="field"><label>Start date</label><input class="inp" type="date" id="m_date" value="${toISO(editing?editing.date:defDate())}"></div>
-      <div class="field"><label>End date <span style="text-transform:none;color:#aaa">(range — optional)</span></label><input class="inp" type="date" id="m_end" value="${editing&&editing.end?toISO(editing.end):""}"></div></div>
-    <div class="row2"><div class="field"><label>Hours</label><input class="inp" id="m_hours" type="number" step="0.25" value="${editing?round(editing.hours):""}" placeholder="8"></div>
+    ${topPickerHTML("m",editing)}
+    <div class="row2"><div class="field"><label>Total hours</label><input class="inp" id="m_hours" type="number" step="0.25" value="${editing?round(editing.hours):""}" placeholder="8" oninput="TOP.touched=true"></div>
       <div class="field"><label>Type of time off</label><select class="inp" id="m_type">${typeOpts(editing&&editing.type)}</select></div></div>
+    <div class="round-hint" id="m_autoHint">Hours auto-fill at 8 per day — type your own for part days.</div>
     <div class="field"><label>What's this time off for?</label><textarea class="inp" id="m_note" rows="2" placeholder="e.g. Doctor's appointment · family trip · jury duty">${editing?esc(editing.note||""):""}</textarea></div>
     ${!isAdm?`<div class="round-hint">You can change any day — even past ones. Your edit is sent to your manager to approve.</div>`:""}
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTimeOff('${editId||""}')">${editing?(isAdm?"Save":"Submit for approval"):"Add entry"}</button></div>`);
-  setTimeout(()=>$("#m_hours").focus(),50);
+  setTimeout(()=>{ if(TOP.mode==="days") topChips(); topAuto(); },60);
 }
 function saveTimeOff(editId){
   const isAdm=emp(SESSION)&&emp(SESSION).role==="admin";
-  const empId=isAdm?$("#m_emp").value:SESSION,date=readDate($("#m_date").value),hours=parseFloat($("#m_hours").value),type=$("#m_type").value,end=$("#m_end").value.trim()?readDate($("#m_end").value):"",note=$("#m_note").value.trim();
-  if(!date){flash("Enter a valid date");return;} if(isNaN(hours)){flash("Enter hours");return;}
+  const when=topRead();
+  if(!when){flash(TOP.mode==="days"?"Add at least one day":"Enter a valid date");return;}
+  const empId=isAdm?$("#m_emp").value:SESSION,hours=parseFloat($("#m_hours").value),type=$("#m_type").value,note=$("#m_note").value.trim();
+  const date=when.date,end=when.end;
+  if(isNaN(hours)){flash("Enter hours");return;}
   let notifyEdit=false;
   if(editId){
     const ex=DB.timeoff.find(x=>x.id===editId);
     if(!ex){flash("Couldn't find that entry");return;}
     if(!isAdm&&ex.empId!==SESSION){flash("You can only edit your own time off");return;}
     Object.assign(ex,{empId,date,hours,type,end,note});
+    if(when.days) ex.days=when.days; else delete ex.days;
     if(!isAdm){ ex.status="pending"; notifyEdit=true; }   // an employee's edit goes back for re-approval
   }
-  else DB.timeoff.push({id:uid("t"),empId,date,hours,type,end,note,status:isAdm?"approved":"pending"});
+  else{ const rec={id:uid("t"),empId,date,hours,type,end,note,status:isAdm?"approved":"pending"}; if(when.days) rec.days=when.days; DB.timeoff.push(rec); }
   const y=yearOf(date);if(y)YEAR=y;save();closeModal();render();
   if(notifyEdit){ flash("Change sent to your manager for approval"); sendPushNotify({kind:"timeoff",title:"✏️ Time-off change",body:`${emp(SESSION).name} edited time off: ${date}${end?" – "+end:""} (${round(hours)}h ${type})`,url:"/"}); }
 }
 /* employee: request time off (pending) */
+function bizDays(s,e){ let n=0; for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){const w=d.getDay();if(w>=1&&w<=5)n++;} return n; }
+/* ===== Time-off picker: date range OR specific (non-consecutive) days, auto 8 h/day ===== */
+let TOP={mode:"range",days:[],touched:false,prefix:"r"};
+function topPickerHTML(p,editing){
+  const days=(editing&&Array.isArray(editing.days))?editing.days.slice():[];
+  const mode=days.length?"days":"range";
+  TOP={mode,days,touched:!!editing,prefix:p};
+  return `
+    <div class="seg" id="${p}_modeSeg" style="margin-bottom:2px">
+      <button type="button" data-m="range" class="${mode==="range"?"on":""}" onclick="topMode('range')">📅 Date range</button>
+      <button type="button" data-m="days" class="${mode==="days"?"on":""}" onclick="topMode('days')">✔️ Specific days</button>
+    </div>
+    <div id="${p}_rangeBox" style="${mode==="range"?"":"display:none"}">
+      <div class="row2"><div class="field"><label>Start date</label><input class="inp" type="date" id="${p}_date" value="${editing&&!days.length?toISO(editing.date):toISO(defDate())}" onchange="topAuto()"></div>
+        <div class="field"><label>End date <span style="text-transform:none;color:#aaa">(optional)</span></label><input class="inp" type="date" id="${p}_end" value="${editing&&editing.end?toISO(editing.end):""}" onchange="topAuto()"></div></div>
+    </div>
+    <div id="${p}_daysBox" style="${mode==="days"?"":"display:none"}">
+      <div class="row2"><div class="field"><label>Pick a day</label><input class="inp" type="date" id="${p}_pick"></div>
+        <div class="field"><label>&nbsp;</label><button type="button" class="btn ghost" style="width:100%" onclick="topAdd()">＋ Add this day</button></div></div>
+      <div class="day-chips" id="${p}_chips"></div>
+      <div class="round-hint">Perfect when your days off aren't back-to-back — e.g. you only work Tue &amp; Thu, so you only add Tue &amp; Thu.</div>
+    </div>`;
+}
+function topMode(m){ TOP.mode=m; const p=TOP.prefix;
+  const rb=$("#"+p+"_rangeBox"), db=$("#"+p+"_daysBox");
+  if(rb) rb.style.display=m==="range"?"":"none";
+  if(db) db.style.display=m==="days"?"":"none";
+  document.querySelectorAll("#"+p+"_modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
+  if(m==="days") topChips(); else topAuto();
+}
+function topChips(){
+  const el=$("#"+TOP.prefix+"_chips"); if(!el) return;
+  const ds=TOP.days.slice().sort((a,b)=>cmpDate(a,b));
+  el.innerHTML=ds.length?ds.map(d=>`<span class="day-chip">${d}<button type="button" onclick="topDel('${d}')" aria-label="Remove ${d}">✕</button></span>`).join("")
+    :`<span style="color:var(--muted);font-size:12.5px">No days yet — pick a date above and tap ＋.</span>`;
+  topAuto();
+}
+function topAdd(){
+  const i=$("#"+TOP.prefix+"_pick"); const d=i&&readDate(i.value);
+  if(!d){flash("Pick a date first");return;}
+  if(!TOP.days.includes(d)) TOP.days.push(d);
+  if(i) i.value=""; topChips();
+}
+function topDel(d){ TOP.days=TOP.days.filter(x=>x!==d); topChips(); }
+function topAuto(){
+  const p=TOP.prefix, h=$("#"+p+"_hours"); if(!h||TOP.touched) return;
+  let n=0;
+  if(TOP.mode==="days") n=TOP.days.length;
+  else{
+    const s=readDate(($("#"+p+"_date")||{}).value||""), ev=(($("#"+p+"_end")||{}).value||"").trim();
+    const e=ev?readDate(ev):"";
+    if(s&&e){ const sd=toDate(s),ed=toDate(e); if(ed>=sd) n=bizDays(sd,ed); } else if(s) n=1;
+  }
+  if(n>0){ h.value=n*8;
+    const hint=$("#"+p+"_autoHint");
+    if(hint) hint.textContent=`Auto-filled: ${n} day${n===1?"":"s"} × 8 h = ${n*8} h. Only gone part of a day? Just type your own hours.`;
+  }
+}
+function topRead(){
+  if(TOP.mode==="days"){
+    if(!TOP.days.length) return null;
+    const ds=TOP.days.slice().sort((a,b)=>cmpDate(a,b));
+    return {date:ds[0], end:"", days:ds};
+  }
+  const p=TOP.prefix;
+  const date=readDate(($("#"+p+"_date")||{}).value||""); if(!date) return null;
+  const ev=(($("#"+p+"_end")||{}).value||"").trim();
+  return {date, end:ev?readDate(ev):"", days:null};
+}
 function openRequest(){
   openModal(`<h3>Request time off</h3><div class="body">
-    <div class="row2"><div class="field"><label>Start date</label><input class="inp" type="date" id="r_date" value="${toISO(defDate())}" onchange="suggestReqHours()"></div>
-      <div class="field"><label>End date <span style="text-transform:none;color:#aaa">(range — optional)</span></label><input class="inp" type="date" id="r_end" onchange="suggestReqHours()"></div></div>
-    <div class="row2"><div class="field"><label>Hours</label><input class="inp" id="r_hours" type="number" step="0.25" placeholder="8"></div>
+    ${topPickerHTML("r")}
+    <div class="row2"><div class="field"><label>Total hours</label><input class="inp" id="r_hours" type="number" step="0.25" placeholder="8" oninput="TOP.touched=true"></div>
       <div class="field"><label>Type of time off</label><select class="inp" id="r_type">${typeOpts()}</select></div></div>
-    <div class="round-hint" id="r_hint">Pick a start date, or a start + end date for multiple days. Hours is the total for the request.</div>
+    <div class="round-hint" id="r_autoHint">Hours auto-fill at 8 per day — type your own if you're only gone part of a day.</div>
     <div class="field"><label>What's this time off for?</label><textarea class="inp" id="r_note" rows="2" placeholder="e.g. Doctor's appointment Tuesday morning · family wedding in Georgia · closing on our new house"></textarea>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">A quick description helps it get approved faster — it shows with your request.</div></div>
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveRequest()">Submit request</button></div>`);
-  setTimeout(()=>$("#r_hours").focus(),50);
-}
-function bizDays(s,e){ let n=0; for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){const w=d.getDay();if(w>=1&&w<=5)n++;} return n; }
-function suggestReqHours(){
-  const s=readDate($("#r_date").value), e=$("#r_end").value.trim()?readDate($("#r_end").value):"";
-  const hint=$("#r_hint");
-  if(s&&e){ const sd=toDate(s),ed=toDate(e); if(ed>=sd){ const bd=bizDays(sd,ed); if(hint)hint.textContent=`${bd} weekday${bd===1?"":"s"} in this range — hours = total for the whole request (e.g. ${bd*8}h at 8h/day).`; const h=$("#r_hours"); if(h&&!h.value)h.value=bd*8; } }
-  else if(hint)hint.textContent="Pick a start date, or a start + end date for multiple days. Hours is the total for the request.";
+  setTimeout(()=>{ topAuto(); },60);
 }
 function saveRequest(){
-  const date=readDate($("#r_date").value),hours=parseFloat($("#r_hours").value),type=$("#r_type").value,end=$("#r_end").value.trim()?readDate($("#r_end").value):"",note=$("#r_note").value.trim();
-  if(!date){flash("Enter a valid date");return;} if(isNaN(hours)){flash("Enter hours");return;}
-  DB.timeoff.push({id:uid("t"),empId:SESSION,date,hours,type,end,note,status:"pending"});
-  const y=yearOf(date);if(y)YEAR=y;save();closeModal();render();flash("Request submitted");
-  sendPushNotify({kind:"timeoff",title:"🌴 Time-off request",body:`${emp(SESSION).name}: ${date}${end?" – "+end:""} (${round(hours)}h ${type})${note?` — "${note.slice(0,80)}"`:""}`,url:"/"});
+  const when=topRead();
+  if(!when){flash(TOP.mode==="days"?"Add at least one day":"Enter a valid date");return;}
+  const hours=parseFloat($("#r_hours").value),type=$("#r_type").value,note=$("#r_note").value.trim();
+  if(isNaN(hours)||hours<=0){flash("Enter the total hours");return;}
+  const rec={id:uid("t"),empId:SESSION,date:when.date,end:when.end,hours,type,note,status:"pending"};
+  if(when.days) rec.days=when.days;
+  DB.timeoff.push(rec);
+  const y=yearOf(when.date);if(y)YEAR=y;save();closeModal();render();flash("Request submitted");
+  sendPushNotify({kind:"timeoff",title:"🌴 Time-off request",body:`${emp(SESSION).name}: ${toWhen(rec)} (${round(hours)}h ${type})${note?` — "${note.slice(0,80)}"`:""}`,url:"/"});
 }
 function approve(id){const t=DB.timeoff.find(x=>x.id===id);if(t){t.status="approved";save();render();flash("Approved");
-  const who=emp(t.empId); if(who&&who.email) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"✅ Time off approved",body:`${t.date}${t.end?" – "+t.end:""} (${round(t.hours)}h ${t.type}) was approved`,url:"/"});}}
+  const who=emp(t.empId); if(who&&who.email) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"✅ Time off approved",body:`${toWhen(t)} (${round(t.hours)}h ${t.type}) was approved`,url:"/"});}}
 
 /* hours (admin + employee) */
 function openHours(editId){ hoursModal(editId,null); }
@@ -2548,10 +2636,10 @@ function openEmp(editId){
       <div class="field"><label>Cell phone <span style="text-transform:none;color:#aaa">(for texts)</span></label><input class="inp" id="e_phone" type="tel" value="${e?esc(e.phone||""):""}" placeholder="(561) 555-0123"></div></div>
     <div class="row2"><div class="field"><label>Pay type</label><select class="inp" id="e_pay">${["Hourly","Salaried","1099"].map(p=>`<option ${e&&e.payType===p?"selected":""}>${p}</option>`).join("")}</select></div>
       <div class="field"><label>Status</label><select class="inp" id="e_status"><option value="FT" ${e&&e.status==="FT"?"selected":""}>Full time</option><option value="PT" ${!e||e.status==="PT"?"selected":""}>Part time</option></select></div></div>
-    <div class="row2"><div class="field"><label>PTO hours / year <span style="text-transform:none;color:#aaa">(their contract)</span></label><input class="inp" id="e_allot" type="number" step="0.5" value="${e?round(e.vacAllot):0}"></div>
-      <div class="field"><label>Banked overtime hrs <span style="text-transform:none;color:#aaa">(adds to PTO)</span></label><input class="inp" id="e_otbank" type="number" step="0.25" value="${e?round(e.otBank||0):0}"></div></div>
+    <div class="row2"><div class="field"><label>Time off hours / year <span style="text-transform:none;color:#aaa">(their contract)</span></label><input class="inp" id="e_allot" type="number" step="0.5" value="${e?round(e.vacAllot):0}"></div>
+      <div class="field"><label>Banked overtime hrs <span style="text-transform:none;color:#aaa">(adds to time off)</span></label><input class="inp" id="e_otbank" type="number" step="0.25" value="${e?round(e.otBank||0):0}"></div></div>
     <div class="field"><label>Birthday (MM/DD)</label><input class="inp" id="e_bday" value="${e?esc(e.bday||""):""}" placeholder="09/25" inputmode="numeric"></div>
-    <div class="field"><label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)"><input type="checkbox" id="e_pto" ${e?(e.getsPto?"checked":""):""} style="width:16px;height:16px"> Receives PTO (only checked people are tracked for time-off hours)</label></div>
+    <div class="field"><label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)"><input type="checkbox" id="e_pto" ${e?(e.getsPto?"checked":""):""} style="width:16px;height:16px"> Gets a time-off balance (tracked for hours)</label></div>
     <div class="field"><label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)"><input type="checkbox" id="e_notes" ${e&&e.notesTime?"checked":""} style="width:16px;height:16px"> Logs notes / cleaning time (flexible any-time block)</label></div>
     <div class="field"><label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)"><input type="checkbox" id="e_salaried" ${e&&e.salaried?"checked":""} style="width:16px;height:16px"> Salaried — no timesheet needed</label></div>
     <div class="field"><label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)"><input type="checkbox" id="e_admin" ${e&&e.role==="admin"?"checked":""} style="width:16px;height:16px"> Full admin access (can see everyone)</label></div>
@@ -2803,7 +2891,7 @@ function renderPayout(v){
     else{
       const payH=Math.min(worked,80), banked=Math.max(0,worked-80);
       gross=(payH+vac)*r.rate; hrs=round(payH+vac)+"";
-      detail=`${round(payH)} h worked${vac?` + ${round(vac)} h PTO`:""}${banked?` · ${round(banked)} h → banked`:""}`;
+      detail=`${round(payH)} h worked${vac?` + ${round(vac)} h time off`:""}${banked?` · ${round(banked)} h → banked`:""}`;
     }
     const fit=gross*(r.fit||0), ss=gross*(r.ss||0), med=gross*(r.med||0);
     const ded=gross>0?(r.ded||0):0;
@@ -2897,7 +2985,7 @@ function renderAdminDetail(v){
 function submitTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; save();render();flash("Timesheet submitted");
   if(empId===SESSION) sendPushNotify({kind:"timeoff",title:"🕒 Timesheet submitted",body:`${emp(empId).name} submitted their timesheet for ${startStr}`,url:"/"}); }
 function unsubmitTS(empId,startStr){ const ts=findTS(empId,startStr); if(ts){ts.submitted=false;ts.approvedBy="";save();render();} }
-function approveTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; ts.approvedBy=emp(SESSION).name; ts.approvedTs=Date.now(); const ev=round(periodOT(ts,true)); save();render();flash(ev>0&&getsPTO(empId)?`Approved · ${ev}h added to PTO`:"Approved");
+function approveTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; ts.approvedBy=emp(SESSION).name; ts.approvedTs=Date.now(); const ev=round(periodOT(ts,true)); save();render();flash(ev>0&&getsPTO(empId)?`Approved · ${ev}h added to banked time`:"Approved");
   const who=emp(empId); if(who&&who.email&&empId!==SESSION) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"✅ Timesheet approved",body:`Your timesheet for ${startStr} was approved`,url:"/"}); }
 function unapproveTS(empId,startStr){ const ts=findTS(empId,startStr); if(ts){ts.approvedBy="";save();render();} }
 
@@ -3001,7 +3089,7 @@ function openDay(empId,startStr,idx){
     ${noteBlock}
     ${helper}
     <div class="row2">
-      <div class="field"><label>Vacation / PTO hours</label><input class="inp" id="d_vac" type="number" step="0.25" value="${window._editDay.vac?round(window._editDay.vac):""}" placeholder="0" oninput="recalcDay()"></div>
+      <div class="field"><label>Time off hours</label><input class="inp" id="d_vac" type="number" step="0.25" value="${window._editDay.vac?round(window._editDay.vac):""}" placeholder="0" oninput="recalcDay()"></div>
       <div class="field"><label>Notes</label><input class="inp" id="d_notes" value="${esc(window._editDay.notes||"")}" placeholder="e.g. Holiday" oninput="recalcDay()"></div>
     </div>
     <div class="day-total-line"><span>Daily total</span><span id="dayTotalOut">0 h</span></div>
