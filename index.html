@@ -908,7 +908,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=18;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=19;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -2706,9 +2706,9 @@ function payMode(m){ tsMode=m; tsDetailEmp=null; render(); window.scrollTo(0,0);
 async function loadRates(){
   try{
     if(!SB) throw new Error("offline");
-    const {data,error}=await SB.from("pay_rates").select("emp_id,rate,salary");
+    const {data,error}=await SB.from("pay_rates").select("emp_id,rate,salary,fit_pct,ss_pct,med_pct,ded_fixed,er_pct");
     if(error) throw error;
-    RATES={}; (data||[]).forEach(r=>{ RATES[r.emp_id]={rate:+r.rate||0,salary:+r.salary||0}; });
+    RATES={}; (data||[]).forEach(r=>{ RATES[r.emp_id]={rate:+r.rate||0,salary:+r.salary||0,fit:+r.fit_pct||0,ss:+r.ss_pct||0,med:+r.med_pct||0,ded:+r.ded_fixed||0,er:+r.er_pct||0}; });
     RATES_ERR=false;
   }catch(e){ RATES=null; RATES_ERR=true; }
   render();
@@ -2732,9 +2732,9 @@ function renderPayout(v){
     return;
   }
   const emps=DB.employees.filter(e=>e.active).sort((a,b)=>a.name.localeCompare(b.name));
-  let total=0;
+  let tGross=0,tFit=0,tSS=0,tMed=0,tDed=0,tNet=0,tER=0;
   const rows=emps.map(e=>{
-    const r=RATES[e.id]||{rate:0,salary:0};
+    const r=RATES[e.id]||{rate:0,salary:0,fit:0,ss:0,med:0,ded:0,er:0};
     const ts=getTS(e.id,tsPeriod);
     const worked=tsWorked(ts,true), vac=tsVac(ts);
     let gross=0, detail="", hrs="";
@@ -2745,23 +2745,40 @@ function renderPayout(v){
       gross=(payH+vac)*r.rate; hrs=round(payH+vac)+"";
       detail=`${round(payH)} h worked${vac?` + ${round(vac)} h PTO`:""}${banked?` · ${round(banked)} h → banked`:""}`;
     }
-    total+=gross;
+    const fit=gross*(r.fit||0), ss=gross*(r.ss||0), med=gross*(r.med||0);
+    const ded=gross>0?(r.ded||0):0;
+    const net=Math.max(0,gross-fit-ss-med-ded);
+    const er=gross*(r.er||0);
+    tGross+=gross; tFit+=fit; tSS+=ss; tMed+=med; tDed+=ded; tNet+=net; tER+=er;
     return `<tr>
-      <td><b>${esc(e.name)}</b><div style="font-size:11.5px;color:var(--muted)">${detail}</div></td>
+      <td style="min-width:170px"><b>${esc(e.name)}</b><div style="font-size:11.5px;color:var(--muted)">${detail}</div></td>
       <td class="num">${hrs}</td>
       <td class="num" style="white-space:nowrap">$<input class="allot-inp" style="width:${r.salary>0?"86":"64"}px" type="number" step="${r.salary>0?"1":"0.25"}" value="${r.salary>0?r.salary:r.rate}" onchange="setPayRate('${e.id}','${r.salary>0?"salary":"rate"}',this.value)"><span style="font-size:11px;color:var(--muted)">${r.salary>0?"/period":"/hr"}</span></td>
-      <td class="num"><b>${money(gross)}</b></td>
+      <td class="num">${money(gross)}</td>
+      <td class="num" style="color:var(--warn)">${fit?"−"+money(fit):"—"}</td>
+      <td class="num" style="color:var(--warn)">${ss?"−"+money(ss):"—"}</td>
+      <td class="num" style="color:var(--warn)">${med?"−"+money(med):"—"}</td>
+      <td class="num" style="color:var(--warn)">${ded?"−"+money(ded):"—"}</td>
+      <td class="num"><b style="color:var(--ok)">${money(net)}</b></td>
+      <td class="num" style="color:var(--muted)">${er?money(er):"—"}</td>
     </tr>`;
   }).join("");
   v.innerHTML=`
    <div class="section-title" style="margin-bottom:6px"><h2>Estimated payout</h2><span class="hint">🔒 Admins only</span></div>
    <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${payToggleHTML()}</div>
    <div class="stat-strip" style="margin:4px 0 16px">
-     <div class="stat"><div class="k">Total estimated gross · everyone</div><div class="v">${money(total)}</div></div>
-     <div class="stat alt"><div class="k">People</div><div class="v">${emps.length}</div></div>
+     <div class="stat"><div class="k">Total gross · everyone</div><div class="v">${money(tGross)}</div></div>
+     <div class="stat alt"><div class="k">Est. take-home · everyone</div><div class="v">${money(tNet)}</div></div>
+     <div class="stat alt"><div class="k">Employer taxes</div><div class="v">${money(tER)}</div></div>
+     <div class="stat"><div class="k">True total cost</div><div class="v">${money(tGross+tER)}</div></div>
    </div>
-   <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th class="num">Pay hrs</th><th class="num">Rate</th><th class="num">Est. gross</th></tr></thead><tbody>${rows}</tbody></table></div>
-   <p class="mini-hint">🔒 Pay data is stored separately from the app data — non-admin logins cannot read it, even directly. Estimates are <b>gross</b> (before taxes &amp; deductions), from the current timesheets: paid hours cap at 80/period (hours beyond that go to banked time), PTO hours are paid, salaried staff at 80 h or their period salary. Rates are editable right here.</p>`;
+   <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th class="num">Pay hrs</th><th class="num">Rate</th><th class="num">Gross</th><th class="num">Fed tax</th><th class="num">Soc. Sec.</th><th class="num">Medicare</th><th class="num">Benefits/other</th><th class="num">Est. net</th><th class="num">ER taxes</th></tr></thead>
+   <tbody>${rows}
+   <tr style="background:#fbf7ee;font-weight:700"><td>Everyone combined</td><td></td><td></td>
+     <td class="num">${money(tGross)}</td><td class="num" style="color:var(--warn)">−${money(tFit)}</td><td class="num" style="color:var(--warn)">−${money(tSS)}</td><td class="num" style="color:var(--warn)">−${money(tMed)}</td><td class="num" style="color:var(--warn)">−${money(tDed)}</td>
+     <td class="num" style="color:var(--ok)">${money(tNet)}</td><td class="num">${money(tER)}</td></tr>
+   </tbody></table></div>
+   <p class="mini-hint">🔒 Pay data is stored separately — non-admin logins cannot read it, even directly. <b>Estimates:</b> hours come from live timesheets (paid hours cap at 80/period, extra → banked time, PTO hours paid; salaried at 80 h or period salary). Federal withholding, Social Security, Medicare and employer taxes use each person's <b>effective percentages from their 6/26/2026 payroll register</b>; benefit deductions (insurance, SIMERP, child support, etc.) are their fixed per-period amounts. Actual payroll from PayMaster will differ slightly — treat this as a close planning estimate, not the final register. Rates are editable here.</p>`;
 }
 function openAdminSheet(id){ tsDetailEmp=id; render(); window.scrollTo(0,0); }
 function backToRoster(){ tsDetailEmp=null; render(); window.scrollTo(0,0); }
