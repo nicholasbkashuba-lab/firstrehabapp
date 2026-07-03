@@ -167,6 +167,12 @@
   .type-pill{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;display:inline-block}
   .t-Vacation{background:#fdeede;color:#b9702f}.t-PTO{background:#e9f1f5;color:var(--teal)}
   .t-Sick{background:#f5e9ec;color:#a24a5e}.t-Personal{background:#efeadd;color:#8a7a3f}
+  .t-Appointment{background:#e7f0f4;color:#2E86AB}.t-Family{background:#f0e9f5;color:#8E44AD}
+  .t-Bereavement{background:#ececec;color:#5a5a5a}.t-Education{background:#e9f5ee;color:#2f8f6b}
+  .t-Holiday{background:#eaf6f0;color:#2f8f6b}.t-Unpaid{background:#f0f0ee;color:#77786f}
+  .to-note{display:none;font-size:12px;color:var(--muted);font-style:italic;margin-top:3px;white-space:normal;max-width:280px}
+  @media(max-width:560px){.to-note{display:block}}
+  .to-note.always{display:block}
   .t-Holiday{background:#e7f2ec;color:var(--ok)}.t-Unpaid{background:#eee;color:#555}
   .st-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
   .st-approved{background:#e7f2ec;color:var(--ok)}.st-pending{background:#fdf1de;color:var(--pending)}
@@ -762,8 +768,10 @@ const LOGO_WHITE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAADcCAYAAA
 const CAL_2026 = [{"empId":"e39","date":"2/9/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"2/9/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"3/31/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"3/31/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"5/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/4/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"AM off"},{"empId":"e46","date":"5/4/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/29/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Leaves ~noon"},{"empId":"e46","date":"5/29/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"4/1/2026","end":"4/2/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"4/1/2026","end":"4/2/2026","hours":16,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e39","date":"5/21/2026","end":"5/22/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e46","date":"5/21/2026","end":"5/22/2026","hours":16,"type":"Vacation","status":"approved","note":"Off with Dave"},{"empId":"e40","date":"1/23/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Half day"},{"empId":"e40","date":"4/21/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e40","date":"5/12/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"2/6/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Out PM"},{"empId":"e47","date":"4/7/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"4/23/2026","end":"4/24/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"7/15/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e47","date":"7/22/2026","end":"7/24/2026","hours":24,"type":"Vacation","status":"approved","note":"Wedding"},{"empId":"e31","date":"3/9/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"3/11/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"3/13/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"4/17/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e31","date":"6/30/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e37","date":"3/13/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e37","date":"5/15/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e37","date":"5/18/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"3/16/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Half day (afternoon)"},{"empId":"e45","date":"4/6/2026","end":"4/8/2026","hours":24,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"7/27/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"8/3/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e45","date":"10/1/2026","end":"10/2/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"2/23/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"2/25/2026","end":"2/26/2026","hours":16,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"4/9/2026","end":"","hours":4,"type":"Vacation","status":"approved","note":"Half day"},{"empId":"e60","date":"4/10/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"4/13/2026","end":"4/15/2026","hours":24,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e60","date":"6/16/2026","end":"6/18/2026","hours":24,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e51","date":"3/27/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e51","date":"6/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e51","date":"6/29/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e50","date":"3/16/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e50","date":"8/26/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"},{"empId":"e50","date":"8/28/2026","end":"","hours":8,"type":"Vacation","status":"approved","note":"From 2026 planner"}];
 const CAL_ANN = [{"title":"In-service training \u2014 Tues, July 13","body":"In-service scheduled for Tuesday, July 13. (Dynasplint rep \u2014 please confirm final time.)","dateStr":"Jul 13, 2026"},{"title":"CPR certification class \u2014 June 8 & 11","body":"CPR class offered June 8 and June 11. Let Nick know if you need to certify or recertify.","dateStr":"Jun 8, 2026"}];
 const KEY="firstrehab_portal_v11";
-const TYPES=["Vacation","PTO","Sick","Personal","Holiday","Unpaid"];
-const TYPE_COLOR={Vacation:"#F4A261",PTO:"#5B8CA0",Sick:"#c07a8c",Personal:"#b39a4e",Holiday:"#3f9c78",Unpaid:"#9aa0a3"};
+const TYPES=["Vacation","PTO","Sick","Personal","Appointment","Family","Bereavement","Education","Holiday","Unpaid"];
+const TYPE_COLOR={Vacation:"#F4A261",PTO:"#5B8CA0",Sick:"#c07a8c",Personal:"#b39a4e",Appointment:"#2E86AB",Family:"#8E44AD",Bereavement:"#7a7a7a",Education:"#2f8f6b",Holiday:"#3f9c78",Unpaid:"#9aa0a3"};
+const TYPE_ICON={Vacation:"🌴",PTO:"🌤️",Sick:"🤒",Personal:"🏠",Appointment:"🩺",Family:"👪",Bereavement:"🕊️",Education:"🎓",Holiday:"🎉",Unpaid:"⏸️"};
+const typeOpts=(sel)=>TYPES.map(t=>`<option value="${t}" ${sel===t?"selected":""}>${TYPE_ICON[t]||""} ${t}</option>`).join("");
 const SHIRT_COLORS=["Blue","Green","Black","Maroon"];
 const SHIRT_HEX={Blue:"#2f6f9e",Green:"#3f9c78",Black:"#2b2b2b",Maroon:"#7c3244"};
 const SHIRT_SIZES=["XS","S","M","L","XL","2XL","3XL"];
@@ -900,7 +908,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=16;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=17;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1782,7 +1790,7 @@ function viewInbox(v){
 
    <div class="section-title sm"><h2>🕒 Time-off requests</h2><span class="hint">${pendTO.length} pending</span></div>
    ${pendTO.length?`<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Employee</th><th>Dates</th><th>Type</th><th class="num">Hours</th><th></th></tr></thead><tbody>
-     ${pendTO.map(t=>`<tr><td><b>${who(t.empId)}</b></td><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${t.type}</span></td><td class="num">${round(t.hours)} h</td>
+     ${pendTO.map(t=>`<tr><td><b>${who(t.empId)}</b></td><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td>
        <td><div class="row-actions"><button class="btn tiny" onclick="approve('${t.id}')">Approve</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">Decline</button></div></td></tr>`).join("")}
      </tbody></table></div>`:`<div class="card" style="margin-bottom:20px;color:var(--muted)">No pending time-off requests.</div>`}
 
@@ -2054,7 +2062,7 @@ function ptoDetailHTML(id){
    </div>
    <div class="section-title sm"><h2>PTO days — taken &amp; requested</h2><button class="btn" onclick="openTimeOff('${id}')">＋ Add PTO</button></div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
-   ${rows.length?rows.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${t.type}</span></td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
+   ${rows.length?rows.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
      <td>${t.status==="pending"?`<span class="st-pill st-pending">Pending</span>`:`<span class="st-pill st-approved">Approved</span>`}</td><td class="note-cell">${esc(t.note||"")}</td>
      <td><div class="row-actions">${t.status==="pending"?`<button class="btn tiny" onclick="approve('${t.id}')">Approve</button>`:""}<button class="btn sm ghost" onclick="openTimeOff(null,'${t.id}')">Edit</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">Delete</button></div></td></tr>`).join("")
     :`<tr><td colspan="7"><div class="empty"><div class="big">No PTO logged yet</div>Add their first PTO day.</div></td></tr>`}
@@ -2212,7 +2220,7 @@ function viewMyOverview(v){
    ${bdayHTML(5)}
    <div class="section-title sm" style="margin-top:6px"><h2>Recent time off</h2><button class="btn sm ghost" onclick="setTab('mytime')">See all</button></div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Hours</th><th>Status</th></tr></thead><tbody>
-   ${myTO.length?myTO.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${t.type}</span></td><td class="num">${round(t.hours)} h</td><td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td></tr>`).join("")
+   ${myTO.length?myTO.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td><td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td></tr>`).join("")
     :`<tr><td colspan="4"><div class="empty"><div class="big">No time off logged yet</div>Use “Request time off” above.</div></td></tr>`}
    </tbody></table></div>`;
 }
@@ -2249,7 +2257,7 @@ function viewMyTime(v){
      <div class="stat"><div class="k">Hours pending</div><div class="v">${round(pendH)}<span class="u">hrs</span></div></div>
    </div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
-   ${rows.length?rows.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${t.type}</span></td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
+   ${rows.length?rows.map(t=>`<tr><td>${esc(t.date)}${t.end?` – ${esc(t.end)}`:""}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
      <td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td><td class="note-cell">${esc(t.note||"")}</td>
      <td><div class="row-actions"><button class="btn sm ghost" onclick="openTimeOff(null,'${t.id}')">Edit</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">${t.status==="pending"?"Cancel":"Delete"}</button></div></td></tr>`).join("")
     :`<tr><td colspan="7"><div class="empty"><div class="big">No time off yet for ${YEAR}</div>Request your first day off.</div></td></tr>`}
@@ -2346,7 +2354,7 @@ function calDayHTML(){
   if(it.holName) out+=`<div class="dv-sect"><h4>Holiday</h4>${row("#3f9c78","🎉",it.holName,"US holiday")}</div>`;
   if(it.bdays.length) out+=`<div class="dv-sect"><h4>Birthdays</h4>${it.bdays.map(e=>row("#c98b2e","🎂",e.name,"Birthday 🎉")).join("")}</div>`;
   if(it.events.length) out+=`<div class="dv-sect"><h4>Events</h4>${it.events.map(ev=>row(eventColor(ev.id),"📌",ev.title,[ev.time?ev.time:"",ev.note||"","added by "+empName(ev.empId)].filter(Boolean).join(" · "),ev)).join("")}</div>`;
-  if(it.offs.length) out+=`<div class="dv-sect"><h4>Out of office</h4>${it.offs.map(t=>{const nm=emp(t.empId);return row(personColor(t.empId),(nm&&nm.photo?"":"🌴"),(nm?nm.name:"")+" — off",[t.type,t.date+(t.end?" – "+t.end:"")].filter(Boolean).join(" · "));}).join("")}</div>`;
+  if(it.offs.length) out+=`<div class="dv-sect"><h4>Out of office</h4>${it.offs.map(t=>{const nm=emp(t.empId);return row(personColor(t.empId),TYPE_ICON[t.type]||"🌴",(nm?nm.name:"")+" — "+(t.type||"off"),[t.date+(t.end?" – "+t.end:""),t.note?'"'+t.note+'"':""].filter(Boolean).join(" · "));}).join("")}</div>`;
   if(!out) out=`<div class="dv-empty">Nothing on the calendar this day.<br><span style="font-size:13px">Tap ＋ to add something.</span></div>`;
   return `<div class="cal-dayview">
     <div class="dv-head"><div class="dv-dow">${calDay.toLocaleDateString("en-US",{weekday:"long"})}</div><div class="dv-date">${calDay.toLocaleDateString("en-US",{month:"long",day:"numeric"})}</div></div>
@@ -2395,8 +2403,8 @@ function openTimeOff(prefill,editId){
     <div class="row2"><div class="field"><label>Start date</label><input class="inp" type="date" id="m_date" value="${toISO(editing?editing.date:defDate())}"></div>
       <div class="field"><label>End date <span style="text-transform:none;color:#aaa">(range — optional)</span></label><input class="inp" type="date" id="m_end" value="${editing&&editing.end?toISO(editing.end):""}"></div></div>
     <div class="row2"><div class="field"><label>Hours</label><input class="inp" id="m_hours" type="number" step="0.25" value="${editing?round(editing.hours):""}" placeholder="8"></div>
-      <div class="field"><label>Type</label><select class="inp" id="m_type">${TYPES.map(t=>`<option ${editing&&editing.type===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
-    <div class="field"><label>Note <span style="text-transform:none;color:#aaa">(optional)</span></label><input class="inp" id="m_note" value="${editing?esc(editing.note||""):""}"></div>
+      <div class="field"><label>Type of time off</label><select class="inp" id="m_type">${typeOpts(editing&&editing.type)}</select></div></div>
+    <div class="field"><label>What's this time off for?</label><textarea class="inp" id="m_note" rows="2" placeholder="e.g. Doctor's appointment · family trip · jury duty">${editing?esc(editing.note||""):""}</textarea></div>
     ${!isAdm?`<div class="round-hint">You can change any day — even past ones. Your edit is sent to your manager to approve.</div>`:""}
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTimeOff('${editId||""}')">${editing?(isAdm?"Save":"Submit for approval"):"Add entry"}</button></div>`);
   setTimeout(()=>$("#m_hours").focus(),50);
@@ -2423,9 +2431,10 @@ function openRequest(){
     <div class="row2"><div class="field"><label>Start date</label><input class="inp" type="date" id="r_date" value="${toISO(defDate())}" onchange="suggestReqHours()"></div>
       <div class="field"><label>End date <span style="text-transform:none;color:#aaa">(range — optional)</span></label><input class="inp" type="date" id="r_end" onchange="suggestReqHours()"></div></div>
     <div class="row2"><div class="field"><label>Hours</label><input class="inp" id="r_hours" type="number" step="0.25" placeholder="8"></div>
-      <div class="field"><label>Type</label><select class="inp" id="r_type">${TYPES.map(t=>`<option>${t}</option>`).join("")}</select></div></div>
+      <div class="field"><label>Type of time off</label><select class="inp" id="r_type">${typeOpts()}</select></div></div>
     <div class="round-hint" id="r_hint">Pick a start date, or a start + end date for multiple days. Hours is the total for the request.</div>
-    <div class="field"><label>Note for your manager <span style="text-transform:none;color:#aaa">(optional)</span></label><input class="inp" id="r_note"></div>
+    <div class="field"><label>What's this time off for?</label><textarea class="inp" id="r_note" rows="2" placeholder="e.g. Doctor's appointment Tuesday morning · family wedding in Georgia · closing on our new house"></textarea>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">A quick description helps it get approved faster — it shows with your request.</div></div>
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveRequest()">Submit request</button></div>`);
   setTimeout(()=>$("#r_hours").focus(),50);
 }
@@ -2441,7 +2450,7 @@ function saveRequest(){
   if(!date){flash("Enter a valid date");return;} if(isNaN(hours)){flash("Enter hours");return;}
   DB.timeoff.push({id:uid("t"),empId:SESSION,date,hours,type,end,note,status:"pending"});
   const y=yearOf(date);if(y)YEAR=y;save();closeModal();render();flash("Request submitted");
-  sendPushNotify({kind:"timeoff",title:"🌴 Time-off request",body:`${emp(SESSION).name}: ${date}${end?" – "+end:""} (${round(hours)}h ${type})`,url:"/"});
+  sendPushNotify({kind:"timeoff",title:"🌴 Time-off request",body:`${emp(SESSION).name}: ${date}${end?" – "+end:""} (${round(hours)}h ${type})${note?` — "${note.slice(0,80)}"`:""}`,url:"/"});
 }
 function approve(id){const t=DB.timeoff.find(x=>x.id===id);if(t){t.status="approved";save();render();flash("Approved");
   const who=emp(t.empId); if(who&&who.email) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"✅ Time off approved",body:`${t.date}${t.end?" – "+t.end:""} (${round(t.hours)}h ${t.type}) was approved`,url:"/"});}}
