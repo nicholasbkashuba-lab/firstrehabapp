@@ -908,7 +908,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=17;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=18;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -2691,7 +2691,78 @@ function roundSel(){ return `<div class="round-sel"><label>Rounding</label><sele
     <option value="nearest" ${ROUND_MODE==="nearest"?"selected":""}>Nearest 15 min</option>
     <option value="off" ${ROUND_MODE==="off"?"selected":""}>Exact</option></select></div>`; }
 
-function viewAdminTimesheets(v){ if(tsDetailEmp) renderAdminDetail(v); else renderAdminRoster(v); }
+function viewAdminTimesheets(v){
+  const me=emp(SESSION);
+  if(tsMode==="pay" && me && me.role==="admin"){ renderPayout(v); return; }
+  tsMode="sheets";
+  if(tsDetailEmp) renderAdminDetail(v); else renderAdminRoster(v);
+}
+
+/* ===== Estimated payout — ADMIN ONLY. Pay data lives in its own table that
+   non-admin logins cannot read (enforced by database row security). ===== */
+let tsMode="sheets", RATES=null, RATES_ERR=false;
+function payToggleHTML(){ return `<div class="seg"><button class="${tsMode!=="pay"?"on":""}" onclick="payMode('sheets')">🕒 Sheets</button><button class="${tsMode==="pay"?"on":""}" onclick="payMode('pay')">💵 Payout</button></div>`; }
+function payMode(m){ tsMode=m; tsDetailEmp=null; render(); window.scrollTo(0,0); }
+async function loadRates(){
+  try{
+    if(!SB) throw new Error("offline");
+    const {data,error}=await SB.from("pay_rates").select("emp_id,rate,salary");
+    if(error) throw error;
+    RATES={}; (data||[]).forEach(r=>{ RATES[r.emp_id]={rate:+r.rate||0,salary:+r.salary||0}; });
+    RATES_ERR=false;
+  }catch(e){ RATES=null; RATES_ERR=true; }
+  render();
+}
+async function setPayRate(empId,field,val){
+  val=Math.max(0,parseFloat(val)||0);
+  RATES=RATES||{}; const cur=RATES[empId]||{rate:0,salary:0}; cur[field]=val; RATES[empId]=cur;
+  try{ await SB.from("pay_rates").upsert({emp_id:empId,rate:cur.rate,salary:cur.salary,updated_at:new Date().toISOString()}); flash("Rate saved 🔒"); }
+  catch(e){ flash("Couldn't save the rate"); }
+  render();
+}
+const money=n=>"$"+(+n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function renderPayout(v){
+  const me=emp(SESSION);
+  if(!me||me.role!=="admin"){ tsMode="sheets"; renderAdminRoster(v); return; }
+  if(!RATES){
+    v.innerHTML=RATES_ERR
+      ? `<div class="card" style="margin-top:16px">Couldn't load pay data. <button class="btn sm" onclick="RATES_ERR=false;loadRates()">Try again</button></div>`
+      : `<div class="card" style="margin-top:16px;color:var(--muted)">Loading pay data…</div>`;
+    if(!RATES_ERR) loadRates();
+    return;
+  }
+  const emps=DB.employees.filter(e=>e.active).sort((a,b)=>a.name.localeCompare(b.name));
+  let total=0;
+  const rows=emps.map(e=>{
+    const r=RATES[e.id]||{rate:0,salary:0};
+    const ts=getTS(e.id,tsPeriod);
+    const worked=tsWorked(ts,true), vac=tsVac(ts);
+    let gross=0, detail="", hrs="";
+    if(r.salary>0){ gross=r.salary; detail="Salary"; hrs="—"; }
+    else if(e.salaried){ gross=80*r.rate; detail="Salaried · 80 h/period"; hrs="80"; }
+    else{
+      const payH=Math.min(worked,80), banked=Math.max(0,worked-80);
+      gross=(payH+vac)*r.rate; hrs=round(payH+vac)+"";
+      detail=`${round(payH)} h worked${vac?` + ${round(vac)} h PTO`:""}${banked?` · ${round(banked)} h → banked`:""}`;
+    }
+    total+=gross;
+    return `<tr>
+      <td><b>${esc(e.name)}</b><div style="font-size:11.5px;color:var(--muted)">${detail}</div></td>
+      <td class="num">${hrs}</td>
+      <td class="num" style="white-space:nowrap">$<input class="allot-inp" style="width:${r.salary>0?"86":"64"}px" type="number" step="${r.salary>0?"1":"0.25"}" value="${r.salary>0?r.salary:r.rate}" onchange="setPayRate('${e.id}','${r.salary>0?"salary":"rate"}',this.value)"><span style="font-size:11px;color:var(--muted)">${r.salary>0?"/period":"/hr"}</span></td>
+      <td class="num"><b>${money(gross)}</b></td>
+    </tr>`;
+  }).join("");
+  v.innerHTML=`
+   <div class="section-title" style="margin-bottom:6px"><h2>Estimated payout</h2><span class="hint">🔒 Admins only</span></div>
+   <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${payToggleHTML()}</div>
+   <div class="stat-strip" style="margin:4px 0 16px">
+     <div class="stat"><div class="k">Total estimated gross · everyone</div><div class="v">${money(total)}</div></div>
+     <div class="stat alt"><div class="k">People</div><div class="v">${emps.length}</div></div>
+   </div>
+   <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th class="num">Pay hrs</th><th class="num">Rate</th><th class="num">Est. gross</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <p class="mini-hint">🔒 Pay data is stored separately from the app data — non-admin logins cannot read it, even directly. Estimates are <b>gross</b> (before taxes &amp; deductions), from the current timesheets: paid hours cap at 80/period (hours beyond that go to banked time), PTO hours are paid, salaried staff at 80 h or their period salary. Rates are editable right here.</p>`;
+}
 function openAdminSheet(id){ tsDetailEmp=id; render(); window.scrollTo(0,0); }
 function backToRoster(){ tsDetailEmp=null; render(); window.scrollTo(0,0); }
 
@@ -2726,7 +2797,7 @@ function renderAdminRoster(v){
       <tbody>${list.map(line).join("")}</tbody></table></div>`;
   v.innerHTML=`
    <div class="section-title" style="margin-bottom:6px"><h2>Timesheets</h2><span class="hint">${periodLabel(tsPeriod)}</span></div>
-   <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${roundSel()}<button class="btn ghost" onclick="clearPeriodTS()">🧹 Clear this period</button></div>
+   <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${payToggleHTML()}${roundSel()}<button class="btn ghost" onclick="clearPeriodTS()">🧹 Clear this period</button></div>
    <div class="stat-strip" style="margin:4px 0 16px">
      <div class="stat"><div class="k">Needs approval</div><div class="v">${needs.length}</div></div>
      <div class="stat alt"><div class="k">Completed</div><div class="v">${completed.length}<span class="u">of ${emps.length}</span></div></div>
