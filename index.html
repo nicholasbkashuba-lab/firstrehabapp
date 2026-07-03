@@ -900,7 +900,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=15;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=16;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1051,8 +1051,11 @@ async function cloudRefresh(){
   }
   try{
     const remote=await cloudGet();
-    if(remote && remote._appver && remote._appver>APP_VER){ reloadForUpdate(remote._appver); return; }   // a newer version is live — pick it up gently
+    /* ALWAYS adopt the fresh copy before anything else — cloudGet moved our merge
+       reference forward, so leaving DB stale here would make the next save clobber
+       other people's entries (the exact bug that ate timesheets). */
     if(remote && remote._rev && remote._rev!==DB._rev){ DB=remote; normalizeDB(); render(); }
+    if(remote && remote._appver && remote._appver>APP_VER){ reloadForUpdate(remote._appver); }   // then pick up new code gently
   }catch(e){}
 }
 function updateCloudBadge(){
@@ -2686,10 +2689,11 @@ function backToRoster(){ tsDetailEmp=null; render(); window.scrollTo(0,0); }
 /* ---- roster overview: who's entered time, who's blank ---- */
 function clearPeriodTS(){
   const cur=fmtD(tsPeriod);
-  const n=(DB.timesheets||[]).filter(t=>t.start===cur).length;
+  const list=(DB.timesheets||[]).filter(t=>t.start===cur);
   if(!confirm(`Clear ALL timesheet entries for ${periodLabel(tsPeriod)}?\n\nThis wipes what everyone has entered for this pay period. It can't be undone.`)) return;
-  DB.timesheets=(DB.timesheets||[]).filter(t=>t.start!==cur);
-  save(); render(); flash(`Cleared timesheets for this period${n?` (${n})`:""}`);
+  /* blank the days (marked as intentional) instead of deleting records — the server refuses silent record loss */
+  list.forEach(ts=>{ ts.submitted=false; ts.approvedBy=""; ts.days=(ts.days||[]).map(d=>({date:d.date,segs:[],vac:0,notes:"",cleared:true})); });
+  save(); render(); flash(`Cleared timesheets for this period${list.length?` (${list.length})`:""}`);
 }
 function renderAdminRoster(v){
   const emps=DB.employees.filter(e=>e.active && !e.salaried).sort((a,b)=>a.name.localeCompare(b.name));
@@ -2900,7 +2904,11 @@ function saveDayDraft(){ try{ const e=window._editDay; if(!e) return;
   sessionStorage.setItem("_dayDraft",JSON.stringify({key:`${e.empId}|${e.startStr}|${e.idx}`,shift:e.shift,vac:($("#d_vac")?$("#d_vac").value:""),notes:($("#d_notes")?$("#d_notes").value:""),ts:Date.now()})); }catch(err){} }
 function recalcDay(){ const vac=parseFloat($("#d_vac")?.value)||0; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac)+" h"; saveDayDraft(); }
 function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; window._editDay.vac=0; saveDay(); }
-function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const segs=shiftSegs(); const ts=ensureTS(empId,startStr); ts.days[idx]={date:ts.days[idx].date,segs,vac,notes}; try{sessionStorage.removeItem("_dayDraft");}catch(e){} save();closeModal();render(); }
+function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const segs=shiftSegs(); const ts=ensureTS(empId,startStr);
+  const day={date:ts.days[idx].date,segs,vac,notes};
+  if(!segs.length) day.cleared=true;   // an intentionally emptied day — tells the server this isn't accidental loss
+  ts.days[idx]=day;
+  try{sessionStorage.removeItem("_dayDraft");}catch(e){} save();closeModal();render(); }
 
 
 /* ---- print (matches paper form) ---- */
