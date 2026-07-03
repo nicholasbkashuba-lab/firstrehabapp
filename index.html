@@ -789,6 +789,13 @@ function normalizeDB(){
   DB.announcements = DB.announcements||[];
   DB.messages = DB.messages||[];
   DB.readmarks = DB.readmarks||[];
+  /* tombstones: explicit record deletions — anything missing WITHOUT one gets resurrected by the server */
+  DB.tombstones = (DB.tombstones||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,400);
+  {
+    const dead=new Set(DB.tombstones.map(t=>t.id));
+    if(dead.size) ["timeoff","hours","announcements","events","messages","media","shirtRequests","feedback","employees"]
+      .forEach(k=>{ if(Array.isArray(DB[k])) DB[k]=DB[k].filter(x=>!(x&&dead.has(x.id))); });
+  }
   DB.shirtRequests = DB.shirtRequests||[];
   DB.feedback  = DB.feedback||[];
   DB.media     = DB.media||[];
@@ -908,8 +915,8 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=20;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
-const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
+const APP_VER=21;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
   try{ BASE=JSON.parse(JSON.stringify(obj)); }catch(e){ BASE=null; }
@@ -1260,6 +1267,8 @@ async function quickEnablePush(){
 
 /* ============= HELPERS ============= */
 const $=s=>document.querySelector(s);
+/* record an explicit, intentional deletion — without this the server resurrects the record */
+function tomb(id){ if(!id||!DB) return; DB.tombstones=DB.tombstones||[]; if(!DB.tombstones.some(t=>t.id===id)) DB.tombstones.push({id,ts:Date.now()}); }
 const uid=p=>p+Math.random().toString(36).slice(2,7);
 const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const emp=id=>DB.employees.find(e=>e.id===id);
@@ -1745,7 +1754,7 @@ function saveAnnounce(editId){
       .then(n=>{ if(n==null)return; flash(n>0?`📣 Sent to ${n} phone${n===1?"":"s"}`:"Posted — no one has notifications turned on yet"); }); }
   save();closeModal();render();
 }
-function delAnnounce(id){ if(!confirm("Delete this announcement?"))return; DB.announcements=DB.announcements.filter(a=>a.id!==id); save();render(); }
+function delAnnounce(id){ if(!confirm("Delete this announcement?"))return; tomb(id); DB.announcements=DB.announcements.filter(a=>a.id!==id); save();render(); }
 
 /* ===== Shirt requests & suggestions ===== */
 function inboxCount(){ return (DB.shirtRequests||[]).filter(s=>s.status!=="done").length + (DB.feedback||[]).filter(f=>f.status!=="done").length; }
@@ -1820,9 +1829,9 @@ function viewInbox(v){
        <div style="margin-top:8px;white-space:pre-wrap">${esc(f.text)}</div></div>`).join("")}</div>`:`<div class="card" style="color:var(--muted)">No suggestions yet.</div>`}`;
 }
 function shirtDone(id,done){ const s=DB.shirtRequests.find(x=>x.id===id); if(s){s.status=done?"done":"new";save();render();} }
-function delShirt(id){ if(!confirm("Delete this shirt request?"))return; DB.shirtRequests=DB.shirtRequests.filter(x=>x.id!==id); save();render(); }
+function delShirt(id){ if(!confirm("Delete this shirt request?"))return; tomb(id); DB.shirtRequests=DB.shirtRequests.filter(x=>x.id!==id); save();render(); }
 function fbDone(id,done){ const f=DB.feedback.find(x=>x.id===id); if(f){f.status=done?"done":"new";save();render();} }
-function delFb(id){ if(!confirm("Delete this suggestion?"))return; DB.feedback=DB.feedback.filter(x=>x.id!==id); save();render(); }
+function delFb(id){ if(!confirm("Delete this suggestion?"))return; tomb(id); DB.feedback=DB.feedback.filter(x=>x.id!==id); save();render(); }
 
 /* ===== Photos (team / social-media wall) ===== */
 function viewPhotos(v){
@@ -1932,7 +1941,7 @@ function saveProfile(){
   if(PF_PHOTO!==undefined) me.photo=PF_PHOTO||"";
   PF_PHOTO=undefined; save(); closeModal(); render(); flash("Details saved");
 }
-function delPhoto(id){ if(!confirm("Delete this photo?"))return; DB.media=DB.media.filter(x=>x.id!==id); save();render(); }
+function delPhoto(id){ if(!confirm("Delete this photo?"))return; tomb(id); DB.media=DB.media.filter(x=>x.id!==id); save();render(); }
 
 /* ===== Team calendar events (anyone can add) ===== */
 function to12(hhmm){ if(!hhmm)return""; const p=String(hhmm).split(":"); let h=+p[0]; const m=p[1]||"00"; const ap=h>=12?"PM":"AM"; const h12=((h+11)%12)+1; return `${h12}:${m} ${ap}`; }
@@ -1959,7 +1968,7 @@ function saveEvent(editId){
   else { DB.events.push({id:uid("ev"),empId:SESSION,title,date,end:end||"",time,note,ts:Date.now()}); flash("Added to the calendar 📌"); }
   save();closeModal();render();
 }
-function delEvent(id){ if(!confirm("Remove this event?"))return; DB.events=DB.events.filter(x=>x.id!==id); save();render(); }
+function delEvent(id){ if(!confirm("Remove this event?"))return; tomb(id); DB.events=DB.events.filter(x=>x.id!==id); save();render(); }
 function notifStatus(){ return (typeof Notification!=="undefined")?Notification.permission:"unsupported"; }
 function openNotify(){
   const me=emp(SESSION); const st=notifStatus();
@@ -2030,7 +2039,7 @@ function declineTO(id){
   const t=(DB.timeoff||[]).find(x=>x.id===id); if(!t)return;
   if(!confirm("Decline this time-off request?"))return;
   const who=emp(t.empId), span=t.date+(t.end?` – ${t.end}`:"");
-  DB.timeoff=DB.timeoff.filter(x=>x.id!==id); save(); render(); flash("Request declined");
+  tomb(id); DB.timeoff=DB.timeoff.filter(x=>x.id!==id); save(); render(); flash("Request declined");
   if(who&&who.email) sendPushNotify({kind:"timeoff_decision",toEmail:who.email,title:"Time off not approved",body:`Your request for ${span} (${round(t.hours)}h ${t.type}) wasn't approved — see Nick with questions.`,url:"/"});
 }
 function cardFor(e){
@@ -2526,10 +2535,11 @@ function removeEmp(id){
   if(id===SESSION){flash("You can't delete the account you're signed in as");return;}
   const has=DB.timeoff.some(t=>t.empId===id)||DB.hours.some(h=>h.empId===id);
   if(!confirm(has?"Delete this person and all their records?":"Delete this employee?"))return;
+  DB.timeoff.filter(t=>t.empId===id).forEach(t=>tomb(t.id)); DB.hours.filter(h=>h.empId===id).forEach(h=>tomb(h.id)); tomb(id);
   DB.timeoff=DB.timeoff.filter(t=>t.empId!==id);DB.hours=DB.hours.filter(h=>h.empId!==id);DB.employees=DB.employees.filter(e=>e.id!==id);
   save();closeModal();render();
 }
-function delRow(kind,id){if(!confirm("Delete this entry?"))return;DB[kind]=DB[kind].filter(x=>x.id!==id);save();render();}
+function delRow(kind,id){if(!confirm("Delete this entry?"))return;tomb(id);DB[kind]=DB[kind].filter(x=>x.id!==id);save();render();}
 
 /* ================= TIMESHEETS ================= */
 let ROUND_MODE = (DB && DB.roundMode) || "nearest";     // 'up' | 'nearest' | 'off'
