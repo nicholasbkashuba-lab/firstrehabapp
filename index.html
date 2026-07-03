@@ -173,6 +173,13 @@
   .to-note{display:none;font-size:12px;color:var(--muted);font-style:italic;margin-top:3px;white-space:normal;max-width:280px}
   @media(max-width:560px){.to-note{display:block}}
   .to-note.always{display:block}
+  .pto-sub{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap}
+  .pto-row{cursor:pointer}
+  .pto-row:hover td{background:#fdfaf2}
+  .prof-pto{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:var(--teal-grad,linear-gradient(160deg,#17566a,#0E3A47));border-radius:14px;padding:14px 12px;margin:4px 0 2px}
+  .prof-pto>div{text-align:center;color:var(--cream)}
+  .prof-pto .k{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold);font-weight:700;margin-bottom:3px}
+  .prof-pto b{font-size:17px;font-family:"Playfair Display",serif}
   .t-Holiday{background:#e7f2ec;color:var(--ok)}.t-Unpaid{background:#eee;color:#555}
   .st-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
   .st-approved{background:#e7f2ec;color:var(--ok)}.st-pending{background:#fdf1de;color:var(--pending)}
@@ -915,7 +922,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=21;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=22;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1896,6 +1903,14 @@ function openProfile(){
         ${me.photo?`<button class="btn danger sm" id="pf_rm" onclick="pfClearPhoto()">Remove</button>`:""}
       </div>
     </div>
+    ${me.getsPto?(()=>{const al=allowedVac(me.id),bank=bankOT(me.id,YEAR),us=ptoUsed(me.id,YEAR),lf=al-us;return `
+    <div class="prof-pto">
+      <div><span class="k">Total PTO</span><b>${round(al)} h</b></div>
+      <div><span class="k">Banked OT</span><b>${round(bank)} h</b></div>
+      <div><span class="k">Used</span><b>${round(us)} h</b></div>
+      <div><span class="k">Left</span><b style="color:${lf<0?"#f4a4a4":"#bfe8d4"}">${round(lf)} h</b></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-bottom:4px">🔒 Balances are managed by the office — only admins can change them.</div>`;})():""}
     <div class="field"><label>Name</label><input class="inp" id="pf_name" value="${esc(me.name)}"></div>
     <div class="row2">
       <div class="field"><label>Email</label><input class="inp" id="pf_email" type="email" value="${esc(me.email||"")}" placeholder="name@firstrehabnpb.com"></div>
@@ -2098,22 +2113,48 @@ function viewAdminTimeoff(v){
   const active=emps.filter(e=>e.active);
   const ptoStaff=active.filter(e=>e.getsPto), noPto=active.filter(e=>!e.getsPto);
   const daysOf=h=>Math.round((h/8)*10)/10;
-  const ptoBody=ptoStaff.map(e=>{const base=+e.vacAllot||0,man=+e.otBank||0,earned=earnedVac(e.id,YEAR),bank=man+earned,al=base+bank,us=ptoUsed(e.id,YEAR),lf=al-us,over=us>al;
-    return `<tr>
-      <td><b class="pto-link" onclick="openPtoDetail('${e.id}')">${esc(e.name)}</b> <span class="view-days" onclick="openPtoDetail('${e.id}')">see days ›</span></td>
-      <td class="num"><input class="allot-inp" type="number" step="0.5" min="0" value="${round(base)}" onchange="setAllot('${e.id}',this.value)" title="PTO contract hours"> h</td>
-      <td class="num"><input class="allot-inp" type="number" step="0.25" min="0" value="${round(man)}" onchange="setOtBank('${e.id}',this.value)" title="Banked overtime hours"> h${earned>0?`<div style="font-size:11px;color:var(--ok)">+${round(earned)} earned</div>`:""}</td>
-      <td class="num"><b>${round(al)} h</b><div style="font-size:11px;color:var(--muted)">${daysOf(al)} days</div></td>
-      <td class="num"><b>${round(us)} h</b></td>
-      <td class="num"><b style="color:${over?'var(--warn)':'var(--ok)'}">${round(lf)} h</b></td>
-      <td><button class="btn danger" onclick="togglePto('${e.id}')" title="Remove PTO">No PTO</button></td>
+  const today=new Date(); today.setHours(0,0,0,0);
+  const wkEnd=new Date(today); wkEnd.setDate(wkEnd.getDate()+(7-wkEnd.getDay()));
+  /* insight tiles: who's out this week, pending count, team usage — no column duplicates */
+  const outThisWeek=new Set(DB.timeoff.filter(t=>{ if(t.status!=="approved")return false; const s=toDate(t.date),en=t.end?toDate(t.end):s; return s<=wkEnd&&en>=today; }).map(t=>t.empId));
+  const pendCt=DB.timeoff.filter(t=>t.status==="pending").length;
+  let sumUsed=0,sumSched=0;
+  const rep=ptoStaff.map(e=>{
+    const base=+e.vacAllot||0, man=+e.otBank||0, earned=earnedVac(e.id,YEAR), bank=man+earned, allow=base+bank;
+    const mine=DB.timeoff.filter(t=>t.empId===e.id&&t.status==="approved"&&yearOf(t.date)===YEAR&&t.type!=="Unpaid"&&t.type!=="Holiday");
+    const used=mine.filter(t=>toDate(t.date)<=today).reduce((s,t)=>s+(+t.hours||0),0);
+    const sched=mine.filter(t=>toDate(t.date)>today).reduce((s,t)=>s+(+t.hours||0),0);
+    const avail=allow-used-sched, pct=allow>0?Math.min(100,(used+sched)/allow*100):0, over=avail<0;
+    sumUsed+=used; sumSched+=sched;
+    return {e,base,bank,earned,allow,used,sched,avail,pct,over};
+  }).sort((a,b)=>a.e.name.localeCompare(b.e.name));
+  const ptoBody=rep.map(r=>{const e=r.e;
+    return `<tr class="pto-row" onclick="openPtoDetail('${e.id}')" title="Open ${esc(e.first)}'s full report & edit balances">
+      <td>
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="avatar" style="width:36px;height:36px;font-size:13px">${e.photo?`<img src="${e.photo}" alt="">`:initials(e.name)}</div>
+          <div style="min-width:0"><b>${esc(e.name)}</b>
+            <div class="bar ${r.over?"over":""}" style="width:130px;height:5px;margin-top:5px"><span style="width:${r.pct}%"></span></div>
+          </div>
+        </div>
+      </td>
+      <td class="num"><b style="font-size:16px">${round(r.allow)}</b><div class="pto-sub">${round(r.base)} PTO + ${round(r.bank)} banked</div></td>
+      <td class="num">${round(r.used)}<div class="pto-sub">${daysOf(r.used)} days</div></td>
+      <td class="num">${r.sched?`${round(r.sched)}<div class="pto-sub">${daysOf(r.sched)} days booked</div>`:`<span style="color:#c9c2b2">—</span>`}</td>
+      <td class="num"><b style="font-size:17px;color:${r.over?"var(--warn)":"var(--ok)"}">${round(r.avail)}</b><div class="pto-sub">${r.over?"over-booked":daysOf(Math.max(0,r.avail))+" days"}</div></td>
+      <td class="num" style="color:var(--muted);font-size:16px">›</td>
     </tr>`;}).join("");
   const noPtoChips=noPto.map(e=>`<span class="nopto-chip">${esc(e.name)} <button onclick="togglePto('${e.id}')" title="Give PTO">＋ PTO</button></span>`).join("");
   v.innerHTML=`
-   <div class="section-title"><h2>PTO tracking · ${YEAR}</h2><span class="hint">Who gets PTO and how many hours they've used</span></div>
-   <p class="mini-hint" style="margin-bottom:14px">Each person's <b>PTO contract hours</b> and <b>banked overtime</b> combine into one Total pool. Overtime on approved timesheets is added automatically. Tap a name to see &amp; edit their days.</p>
+   <div class="section-title"><h2>Time off report · ${YEAR}</h2><span class="hint">Balances at a glance — tap anyone for their full report</span></div>
+   <div class="stat-strip" style="margin:4px 0 14px">
+     <div class="stat"><div class="k">Out this week</div><div class="v">${outThisWeek.size}<span class="u">people</span></div></div>
+     <div class="stat alt"><div class="k">Pending requests</div><div class="v">${pendCt}</div></div>
+     <div class="stat alt"><div class="k">Taken so far · team</div><div class="v">${round(sumUsed)}<span class="u">hrs</span></div></div>
+     <div class="stat"><div class="k">Booked ahead · team</div><div class="v">${round(sumSched)}<span class="u">hrs</span></div></div>
+   </div>
    ${ptoStaff.length?`<div class="tbl-wrap" style="margin-bottom:16px"><table>
-     <thead><tr><th>PTO staff</th><th class="num">PTO hrs</th><th class="num">Banked OT</th><th class="num">Total</th><th class="num">Used</th><th class="num">Left</th><th></th></tr></thead>
+     <thead><tr><th>Employee</th><th class="num">Allowance</th><th class="num">Used</th><th class="num">Scheduled</th><th class="num">Available</th><th></th></tr></thead>
      <tbody>${ptoBody}</tbody></table></div>`:`<div class="card" style="margin-bottom:16px;color:var(--muted)">No one is marked as receiving PTO yet. Add people from the list below.</div>`}
    ${noPto.length?`<div class="section-title sm"><h2 style="font-size:15px">Not on PTO (${noPto.length})</h2></div><div class="nopto-wrap">${noPtoChips}</div>`:""}
 
