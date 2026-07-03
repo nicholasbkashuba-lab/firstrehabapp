@@ -908,7 +908,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=19;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=20;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","shirtRequests","feedback","media","messages","readmarks"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -930,7 +930,16 @@ function mergeStates(base,local,remote){
     const bm=new Map(b.map(x=>[x&&x.id,x])), lm=new Map(l.map(x=>[x&&x.id,x])), rm=new Map(r.map(x=>[x&&x.id,x]));
     const res=[];
     r.forEach(x=>{ const id=x&&x.id;
-      if(lm.has(id)){ const lv=lm.get(id); res.push(sameJSON(lv,bm.get(id))?x:lv); }   // we edited it → ours; untouched → theirs
+      if(lm.has(id)){
+        const lv=lm.get(id), bv=bm.get(id);
+        if(sameJSON(lv,bv)) res.push(x);                                              // untouched by us → theirs
+        else if(k==="employees"&&bv&&x&&lv){                                          // both may have touched this person → merge FIELD by field
+          const out=Object.assign({},x);
+          new Set([...Object.keys(lv),...Object.keys(x)]).forEach(f=>{ if(!sameJSON(lv[f],bv[f])) out[f]=lv[f]; });
+          res.push(out);
+        }
+        else res.push(lv);                                                            // we edited it → ours
+      }
       else if(bm.has(id)){ if(!sameJSON(x,bm.get(id)) || k==="timesheets") res.push(x); }  // deletions stick — but hour sheets are NEVER dropped implicitly
       else res.push(x);                                                               // they added it → keep
     });
