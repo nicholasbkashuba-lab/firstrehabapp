@@ -178,6 +178,8 @@
   .day-chip{display:inline-flex;align-items:center;gap:7px;background:#eef4f2;border:1px solid #cfe0da;color:var(--teal);font-weight:700;font-size:13px;border-radius:999px;padding:5px 6px 5px 12px}
   .day-chip button{background:rgba(14,58,71,.12);border:none;border-radius:50%;width:20px;height:20px;font-size:10px;color:var(--teal);cursor:pointer;line-height:1}
   .day-chip button:hover{background:var(--warn);color:#fff}
+  .pd-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px;margin:6px 0}
+  .pd-day{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#faf6ec;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px;font-weight:600}
   .pto-row{cursor:pointer}
   .pto-row:hover td{background:#fdfaf2}
   .prof-pto{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:var(--teal-grad,linear-gradient(160deg,#17566a,#0E3A47));border-radius:14px;padding:14px 12px;margin:4px 0 2px}
@@ -926,7 +928,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=23;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=24;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -2432,7 +2434,7 @@ function calDayHTML(){
   if(it.holName) out+=`<div class="dv-sect"><h4>Holiday</h4>${row("#3f9c78","🎉",it.holName,"US holiday")}</div>`;
   if(it.bdays.length) out+=`<div class="dv-sect"><h4>Birthdays</h4>${it.bdays.map(e=>row("#c98b2e","🎂",e.name,"Birthday 🎉")).join("")}</div>`;
   if(it.events.length) out+=`<div class="dv-sect"><h4>Events</h4>${it.events.map(ev=>row(eventColor(ev.id),"📌",ev.title,[ev.time?ev.time:"",ev.note||"","added by "+empName(ev.empId)].filter(Boolean).join(" · "),ev)).join("")}</div>`;
-  if(it.offs.length) out+=`<div class="dv-sect"><h4>Out of office</h4>${it.offs.map(t=>{const nm=emp(t.empId);return row(personColor(t.empId),TYPE_ICON[t.type]||"🌴",(nm?nm.name:"")+" — "+(t.type||"off"),[toWhen(t),t.note?'"'+t.note+'"':""].filter(Boolean).join(" · "));}).join("")}</div>`;
+  if(it.offs.length) out+=`<div class="dv-sect"><h4>Out of office</h4>${it.offs.map(t=>{const nm=emp(t.empId);return row(personColor(t.empId),TYPE_ICON[t.type]||"🌴",(nm?nm.name:"")+" — "+(t.type||"off"),[toWhen(t),(t.dayHours&&t.dayHours[fmtD(calDay)]!=null)?round(t.dayHours[fmtD(calDay)])+" h this day":"",t.note?'"'+t.note+'"':""].filter(Boolean).join(" · "));}).join("")}</div>`;
   if(!out) out=`<div class="dv-empty">Nothing on the calendar this day.<br><span style="font-size:13px">Tap ＋ to add something.</span></div>`;
   return `<div class="cal-dayview">
     <div class="dv-head"><div class="dv-dow">${calDay.toLocaleDateString("en-US",{weekday:"long"})}</div><div class="dv-date">${calDay.toLocaleDateString("en-US",{month:"long",day:"numeric"})}</div></div>
@@ -2485,7 +2487,7 @@ function openTimeOff(prefill,editId){
     <div class="field"><label>What's this time off for?</label><textarea class="inp" id="m_note" rows="2" placeholder="e.g. Doctor's appointment · family trip · jury duty">${editing?esc(editing.note||""):""}</textarea></div>
     ${!isAdm?`<div class="round-hint">You can change any day — even past ones. Your edit is sent to your manager to approve.</div>`:""}
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTimeOff('${editId||""}')">${editing?(isAdm?"Save":"Submit for approval"):"Add entry"}</button></div>`);
-  setTimeout(()=>{ if(TOP.mode==="days") topChips(); topAuto(); },60);
+  setTimeout(()=>{ if(TOP.mode==="days") topChips(); topAuto(); topPDRender(); },60);
 }
 function saveTimeOff(editId){
   const isAdm=emp(SESSION)&&emp(SESSION).role==="admin";
@@ -2501,9 +2503,10 @@ function saveTimeOff(editId){
     if(!isAdm&&ex.empId!==SESSION){flash("You can only edit your own time off");return;}
     Object.assign(ex,{empId,date,hours,type,end,note});
     if(when.days) ex.days=when.days; else delete ex.days;
+    if(when.dayHours) ex.dayHours=when.dayHours; else delete ex.dayHours;
     if(!isAdm){ ex.status="pending"; notifyEdit=true; }   // an employee's edit goes back for re-approval
   }
-  else{ const rec={id:uid("t"),empId,date,hours,type,end,note,status:isAdm?"approved":"pending"}; if(when.days) rec.days=when.days; DB.timeoff.push(rec); }
+  else{ const rec={id:uid("t"),empId,date,hours,type,end,note,status:isAdm?"approved":"pending"}; if(when.days) rec.days=when.days; if(when.dayHours) rec.dayHours=when.dayHours; DB.timeoff.push(rec); }
   const y=yearOf(date);if(y)YEAR=y;save();closeModal();render();
   if(notifyEdit){ flash("Change sent to your manager for approval"); sendPushNotify({kind:"timeoff",title:"✏️ Time-off change",body:`${emp(SESSION).name} edited time off: ${date}${end?" – "+end:""} (${round(hours)}h ${type})`,url:"/"}); }
 }
@@ -2514,7 +2517,8 @@ let TOP={mode:"range",days:[],touched:false,prefix:"r"};
 function topPickerHTML(p,editing){
   const days=(editing&&Array.isArray(editing.days))?editing.days.slice():[];
   const mode=days.length?"days":"range";
-  TOP={mode,days,touched:!!editing,prefix:p};
+  const dayHours=(editing&&editing.dayHours)?Object.assign({},editing.dayHours):{};
+  TOP={mode,days,touched:!!editing,prefix:p,dayHours,pd:Object.keys(dayHours).length>0};
   return `
     <div class="seg" id="${p}_modeSeg" style="margin-bottom:2px">
       <button type="button" data-m="range" class="${mode==="range"?"on":""}" onclick="topMode('range')">📅 Date range</button>
@@ -2529,7 +2533,42 @@ function topPickerHTML(p,editing){
         <div class="field"><label>&nbsp;</label><button type="button" class="btn ghost" style="width:100%" onclick="topAdd()">＋ Add this day</button></div></div>
       <div class="day-chips" id="${p}_chips"></div>
       <div class="round-hint">Perfect when your days off aren't back-to-back — e.g. you only work Tue &amp; Thu, so you only add Tue &amp; Thu.</div>
-    </div>`;
+    </div>
+    <div id="${p}_perday" style="margin:2px 0 4px"></div>`;
+}
+/* the actual days a selection covers (range → weekdays; days mode → the chips) */
+function topSelectedDays(){
+  if(TOP.mode==="days") return TOP.days.slice().sort((a,b)=>cmpDate(a,b));
+  const p=TOP.prefix, s=readDate(($("#"+p+"_date")||{}).value||""); if(!s) return [];
+  const ev=(($("#"+p+"_end")||{}).value||"").trim(); const e=ev?readDate(ev):"";
+  const sd=toDate(s), ed=toDate(e||s); if(ed<sd) return [s];
+  const out=[]; for(let d=new Date(sd);d<=ed;d.setDate(d.getDate()+1)){ const w=d.getDay(); if(w>=1&&w<=5) out.push(fmtD(d)); }
+  return out.length?out:[s];
+}
+/* per-day hours: e.g. off 7/3–7/10 but only a half day (4 h) on 7/3 */
+function topPD(){ TOP.pd=!TOP.pd; topPDRender(); }
+function topPDRender(){
+  const el=$("#"+TOP.prefix+"_perday"); if(!el) return;
+  if(!TOP.pd){ el.innerHTML=`<button type="button" class="linkish" style="padding:2px" onclick="topPD()">⚙ Different hours on certain days? (e.g. a half day)</button>`; return; }
+  const days=topSelectedDays();
+  if(!days.length){ el.innerHTML=`<div class="round-hint">Pick your dates first, then set per-day hours.</div><button type="button" class="linkish" onclick="topPD()">Hide</button>`; return; }
+  if(days.length>21){ el.innerHTML=`<div class="round-hint">Per-day hours works for selections up to 21 days.</div>`; return; }
+  TOP.dayHours=TOP.dayHours||{};
+  el.innerHTML=`<div class="pd-days">${days.map(d=>{
+    const dt=toDate(d), lbl=dt.toLocaleDateString("en-US",{weekday:"short",month:"numeric",day:"numeric"});
+    const v=TOP.dayHours[d]!=null?TOP.dayHours[d]:8;
+    return `<div class="pd-day"><span>${lbl}</span><span style="white-space:nowrap"><input class="allot-inp" type="number" step="0.25" min="0" max="24" value="${round(v)}" onchange="topPDSet('${d}',this.value)"> h</span></div>`;
+  }).join("")}</div>
+  <div class="round-hint">Set the hours you're actually off each day — e.g. <b>4</b> for a half day. The total updates automatically.</div>
+  <button type="button" class="linkish" style="padding:2px" onclick="topPD()">Hide per-day hours</button>`;
+}
+function topPDSet(d,val){
+  TOP.dayHours=TOP.dayHours||{}; TOP.dayHours[d]=Math.max(0,Math.min(24,parseFloat(val)||0));
+  TOP.touched=true;
+  const days=topSelectedDays();
+  const total=days.reduce((s,x)=>s+(TOP.dayHours[x]!=null?TOP.dayHours[x]:8),0);
+  const h=$("#"+TOP.prefix+"_hours"); if(h) h.value=round(total);
+  const hint=$("#"+TOP.prefix+"_autoHint"); if(hint) hint.textContent=`Total from your per-day hours: ${round(total)} h.`;
 }
 function topMode(m){ TOP.mode=m; const p=TOP.prefix;
   const rb=$("#"+p+"_rangeBox"), db=$("#"+p+"_daysBox");
@@ -2537,6 +2576,7 @@ function topMode(m){ TOP.mode=m; const p=TOP.prefix;
   if(db) db.style.display=m==="days"?"":"none";
   document.querySelectorAll("#"+p+"_modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
   if(m==="days") topChips(); else topAuto();
+  topPDRender();
 }
 function topChips(){
   const el=$("#"+TOP.prefix+"_chips"); if(!el) return;
@@ -2549,9 +2589,9 @@ function topAdd(){
   const i=$("#"+TOP.prefix+"_pick"); const d=i&&readDate(i.value);
   if(!d){flash("Pick a date first");return;}
   if(!TOP.days.includes(d)) TOP.days.push(d);
-  if(i) i.value=""; topChips();
+  if(i) i.value=""; topChips(); if(TOP.pd) topPDRender();
 }
-function topDel(d){ TOP.days=TOP.days.filter(x=>x!==d); topChips(); }
+function topDel(d){ TOP.days=TOP.days.filter(x=>x!==d); topChips(); if(TOP.pd) topPDRender(); }
 function topAuto(){
   const p=TOP.prefix, h=$("#"+p+"_hours"); if(!h||TOP.touched) return;
   let n=0;
@@ -2561,21 +2601,28 @@ function topAuto(){
     const e=ev?readDate(ev):"";
     if(s&&e){ const sd=toDate(s),ed=toDate(e); if(ed>=sd) n=bizDays(sd,ed); } else if(s) n=1;
   }
+  if(TOP.pd) topPDRender();
   if(n>0){ h.value=n*8;
     const hint=$("#"+p+"_autoHint");
     if(hint) hint.textContent=`Auto-filled: ${n} day${n===1?"":"s"} × 8 h = ${n*8} h. Only gone part of a day? Just type your own hours.`;
   }
 }
 function topRead(){
+  let out;
   if(TOP.mode==="days"){
     if(!TOP.days.length) return null;
     const ds=TOP.days.slice().sort((a,b)=>cmpDate(a,b));
-    return {date:ds[0], end:"", days:ds};
+    out={date:ds[0], end:"", days:ds};
+  }else{
+    const p=TOP.prefix;
+    const date=readDate(($("#"+p+"_date")||{}).value||""); if(!date) return null;
+    const ev=(($("#"+p+"_end")||{}).value||"").trim();
+    out={date, end:ev?readDate(ev):"", days:null};
   }
-  const p=TOP.prefix;
-  const date=readDate(($("#"+p+"_date")||{}).value||""); if(!date) return null;
-  const ev=(($("#"+p+"_end")||{}).value||"").trim();
-  return {date, end:ev?readDate(ev):"", days:null};
+  const sel=topSelectedDays(), dh={};
+  sel.forEach(d=>{ const v=TOP.dayHours&&TOP.dayHours[d]; if(v!=null&&v!==8) dh[d]=v; });
+  out.dayHours=Object.keys(dh).length?dh:null;
+  return out;
 }
 function openRequest(){
   openModal(`<h3>Request time off</h3><div class="body">
@@ -2586,7 +2633,7 @@ function openRequest(){
     <div class="field"><label>What's this time off for?</label><textarea class="inp" id="r_note" rows="2" placeholder="e.g. Doctor's appointment Tuesday morning · family wedding in Georgia · closing on our new house"></textarea>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">A quick description helps it get approved faster — it shows with your request.</div></div>
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveRequest()">Submit request</button></div>`);
-  setTimeout(()=>{ topAuto(); },60);
+  setTimeout(()=>{ topAuto(); topPDRender(); },60);
 }
 function saveRequest(){
   const when=topRead();
@@ -2595,6 +2642,7 @@ function saveRequest(){
   if(isNaN(hours)||hours<=0){flash("Enter the total hours");return;}
   const rec={id:uid("t"),empId:SESSION,date:when.date,end:when.end,hours,type,note,status:"pending"};
   if(when.days) rec.days=when.days;
+  if(when.dayHours) rec.dayHours=when.dayHours;
   DB.timeoff.push(rec);
   const y=yearOf(when.date);if(y)YEAR=y;save();closeModal();render();flash("Request submitted");
   sendPushNotify({kind:"timeoff",title:"🌴 Time-off request",body:`${emp(SESSION).name}: ${toWhen(rec)} (${round(hours)}h ${type})${note?` — "${note.slice(0,80)}"`:""}`,url:"/"});
