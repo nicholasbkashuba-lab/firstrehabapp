@@ -928,7 +928,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=25;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=26;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -2106,6 +2106,26 @@ let AF={emp:"",type:"",q:""};
 let PTO_DETAIL=null;
 function openPtoDetail(id){ PTO_DETAIL=id; render(); window.scrollTo(0,0); }
 function backPtoDetail(){ PTO_DETAIL=null; render(); window.scrollTo(0,0); }
+/* Ledger: every source of banked time — the starting balance the admin entered,
+   plus each APPROVED pay period where they worked past 80 h. Read-only. */
+function bankLedgerHTML(id){
+  const e=emp(id); if(!e||!e.getsPto) return "";
+  const man=+e.otBank||0;
+  const rows=DB.timesheets
+    .filter(t=>t.empId===id && t.approvedBy && yearOf(t.start)===YEAR && periodOT(t,true)>0)
+    .sort((a,b)=>parseD(a.start)-parseD(b.start));
+  const total=man+rows.reduce((s,t)=>s+periodOT(t,true),0);
+  if(!man && !rows.length) return "";
+  return `<div class="card" style="margin-bottom:20px">
+    <div class="section-title sm" style="margin:0 0 4px"><h2 style="font-size:15px">Where the banked hours came from</h2><span class="hint">overtime = approved hours over 80 per pay period</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Source</th><th class="num">Worked</th><th class="num">Banked</th></tr></thead><tbody>
+      ${man?`<tr><td>Starting balance — overtime earned before timesheets were tracked here <span style="color:var(--muted);font-size:12px">(entered by admin, editable below)</span></td><td class="num" style="color:#c9c2b2">—</td><td class="num"><b>+${round(man)} h</b></td></tr>`:""}
+      ${rows.map(t=>`<tr><td>Pay period <b>${periodLabel(parseD(t.start))}</b> — worked past 80 h · approved by ${esc(t.approvedBy)}</td><td class="num">${round(tsWorked(t,true))} h</td><td class="num"><b style="color:var(--ok)">+${round(periodOT(t,true))} h</b></td></tr>`).join("")}
+      <tr><td style="border-top:2px solid var(--line)"><b>Total banked</b></td><td style="border-top:2px solid var(--line)"></td><td class="num" style="border-top:2px solid var(--line)"><b style="font-size:15px">${round(total)} h</b></td></tr>
+    </tbody></table></div>
+    ${rows.length?"":`<div style="font-size:12px;color:var(--muted);margin-top:6px">No approved timesheet has gone over 80 h yet this year — when one does, the overtime will appear here automatically.</div>`}
+  </div>`;
+}
 function ptoDetailHTML(id){
   const e=emp(id); const base=+e.vacAllot||0,man=+e.otBank||0,earned=earnedVac(id,YEAR),bank=man+earned,al=base+bank,us=ptoUsed(id,YEAR),lf=al-us,pct=al>0?Math.min(100,us/al*100):0,over=us>al;
   const daysOf=h=>Math.round((h/8)*10)/10;
@@ -2114,7 +2134,7 @@ function ptoDetailHTML(id){
    <button class="btn ghost sm" onclick="backPtoDetail()">‹ All balances</button>
    <div class="section-title" style="margin-top:10px"><h2>${esc(e.name)} · Time off ${YEAR}</h2><span class="hint">${e.status==="FT"?"Full-time":"Part-time"}</span></div>
    <div class="pto-detail-grid">
-     <div class="card"><div class="k2">Total available</div><div class="pd-big">${round(al)}<small>h</small></div><div class="pd-sub">${daysOf(al)} days · ${round(base)} PTO + ${round(bank)} OT</div></div>
+     <div class="card"><div class="k2">Total available</div><div class="pd-big">${round(al)}<small>h</small></div><div class="pd-sub">${daysOf(al)} days · ${round(base)} base + ${round(bank)} banked</div></div>
      <div class="card"><div class="k2">Used</div><div class="pd-big">${round(us)}<small>h</small></div><div class="pd-sub">${daysOf(us)} days</div></div>
      <div class="card"><div class="k2">Remaining</div><div class="pd-big" style="color:${over?'var(--warn)':'var(--ok)'}">${round(lf)}<small>h</small></div><div class="pd-sub">${daysOf(Math.max(0,lf))} days</div></div>
    </div>
@@ -2124,6 +2144,7 @@ function ptoDetailHTML(id){
      <div class="field" style="margin:0"><label>Banked overtime (hrs)</label><input class="allot-inp" type="number" step="0.25" min="0" value="${round(man)}" onchange="setOtBank('${id}',this.value)"></div>
      <div style="flex:1;min-width:150px;font-size:12px;color:var(--muted)">Combined into one time-off pool of <b>${round(al)} h</b>.${earned>0?` Includes <b>+${round(earned)} h</b> earned on approved timesheets (updates automatically).`:` Any overtime on approved timesheets is added here automatically.`}</div>
    </div>
+   ${bankLedgerHTML(id)}
    <div class="section-title sm"><h2>Days — taken &amp; requested</h2><button class="btn" onclick="openTimeOff('${id}')">＋ Add time off</button></div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
    ${rows.length?rows.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
