@@ -928,7 +928,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=24;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=25;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1064,11 +1064,21 @@ function showUpdatePill(){
   document.body.appendChild(b);
 }
 function isVersionError(e){ const m=(e&&(e.message||e.details||e.hint||""))+""; return /app_out_of_date/i.test(m); }
+function isBulkClearError(e){ const m=(e&&(e.message||e.details||e.hint||""))+""; return /bulk_clear_blocked/i.test(m); }
 async function save(silent){
   DB._rev=Date.now(); DB._appver=APP_VER;
   const json=JSON.stringify(DB);
   try{ await LOCAL.set(KEY,json); }catch(e){}
-  if(SB && CLOUD){ try{ await cloudSet(DB); }catch(e){ CLOUD=false; updateCloudBadge(); if(isVersionError(e)){ reloadForUpdate(); return; } if(!silent) flash("Couldn't reach the cloud — saved on this device, will sync when back online"); } }
+  if(SB && CLOUD){ try{ await cloudSet(DB); }catch(e){
+    if(isBulkClearError(e)){
+      /* The database safety net refused this save because it would have emptied
+         many timesheet days at once. Put the untouched cloud copy back so this
+         device matches everyone else — nothing was erased. */
+      flash("⛔ Blocked for safety: that change would have cleared several timesheet days at once. Nothing was erased.");
+      try{ const remote=await cloudGet(); if(remote){ DB=remote; normalizeDB(); try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e3){} render(); } }catch(e2){}
+      updateCloudBadge(); return;
+    }
+    CLOUD=false; updateCloudBadge(); if(isVersionError(e)){ reloadForUpdate(); return; } if(!silent) flash("Couldn't reach the cloud — saved on this device, will sync when back online"); } }
   updateCloudBadge();
   if(!silent) flash(CLOUD?"Saved to the cloud ☁️":"Saved on this device");
 }
@@ -2859,7 +2869,25 @@ function renderTimesheet(v, empId, isAdmin){
    <div class="ts-week-label">Week 2 <span class="wsum">${round(w2)} h</span></div>
    <div class="ts-grid">${wk(7,14)}</div>`;
 }
-function viewMyTimesheet(v){ renderTimesheet(v, SESSION, false); }
+/* A new pay period starting must NEVER look like lost data — say so, loudly and kindly. */
+function rolloverBannerHTML(empId){
+  const cur=fmtD(tsPeriod);
+  if(fmtD(periodStartFor(new Date()))!==cur) return "";                         // only on the live current period
+  const curHas = empId ? tsHasEntries(getTS(empId,tsPeriod))
+                       : (DB.timesheets||[]).some(t=>t.start===cur&&tsHasEntries(t));
+  if(curHas) return "";
+  const prevStart=new Date(tsPeriod.getTime()-14*86400000), pfmt=fmtD(prevStart);
+  const prev = empId ? findTS(empId,pfmt) : (DB.timesheets||[]).find(t=>t.start===pfmt&&tsHasEntries(t));
+  if(!prev || (empId&&!tsHasEntries(prev))) return "";
+  const label=`${prevStart.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${new Date(prevStart.getTime()+13*86400000).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
+  const nudge = empId&&!prev.submitted&&!prev.approvedBy ? ` <b style="color:var(--pending)">Don't forget to submit it for approval!</b>` : "";
+  return `<div class="card" style="margin:10px 0 14px;border-left:4px solid var(--gold);background:#fffdf4">
+    🗓 <b>A new pay period just started</b> — you're looking at <b>${periodLabel(tsPeriod)}</b>, which is empty because it only began ${tsPeriod.toLocaleDateString("en-US",{weekday:"long"})}.
+    ${empId?"Your":"Everyone's"} last-period timesheet${empId?" is":"s are"} <b>completely safe</b>.${nudge}
+    <div style="margin-top:9px"><button class="btn sm" onclick="tsStep(-1)">‹ View last period (${label})</button></div>
+  </div>`;
+}
+function viewMyTimesheet(v){ renderTimesheet(v, SESSION, false); v.insertAdjacentHTML("afterbegin", rolloverBannerHTML(SESSION)); }
 /* shift classification & totals */
 function segIsPM(seg){ const i=hmToMin(seg.in); return i!=null && i>=720; }   // starts at/after 12:00 noon
 function segKind(seg){ return seg.shift || (segIsPM(seg)?"pm":"am"); }        // 'am' | 'pm' | 'note'
@@ -3010,7 +3038,8 @@ function renderAdminRoster(v){
       <tbody>${list.map(line).join("")}</tbody></table></div>`;
   v.innerHTML=`
    <div class="section-title" style="margin-bottom:6px"><h2>Timesheets</h2><span class="hint">${periodLabel(tsPeriod)}</span></div>
-   <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${payToggleHTML()}${roundSel()}<button class="btn ghost" onclick="clearPeriodTS()">🧹 Clear this period</button></div>
+   ${rolloverBannerHTML(null)}
+   <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${payToggleHTML()}${roundSel()}</div>
    <div class="stat-strip" style="margin:4px 0 16px">
      <div class="stat"><div class="k">Needs approval</div><div class="v">${needs.length}</div></div>
      <div class="stat alt"><div class="k">Completed</div><div class="v">${completed.length}<span class="u">of ${emps.length}</span></div></div>
