@@ -928,7 +928,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=26;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=27;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -3044,8 +3044,10 @@ function renderAdminRoster(v){
     return {e,ts,st,started,total:tsTotal(ts,true)};});
   const needs=rows.filter(r=>r.st==="submitted");
   const completed=rows.filter(r=>r.st==="approved");
-  const waiting=rows.filter(r=>r.st==="inprogress"||r.st==="notstarted");
-  const nInProg=rows.filter(r=>r.st==="inprogress").length, nNot=rows.filter(r=>r.st==="notstarted").length;
+  const done=[...needs,...completed];                       // finished sheets — ones awaiting approval first
+  const inprog=rows.filter(r=>r.st==="inprogress");
+  const notstart=rows.filter(r=>r.st==="notstarted");
+  const nInProg=inprog.length, nNot=notstart.length;
   const line=(r)=>`<tr class="clickrow" onclick="openAdminSheet('${r.e.id}')">
       <td><b style="${r.st==="notstarted"?'color:var(--muted)':''}">${esc(r.e.name)}</b></td>
       <td>${statusPill(r.ts)}</td>
@@ -3067,10 +3069,10 @@ function renderAdminRoster(v){
      <div class="stat alt"><div class="k">In progress</div><div class="v">${nInProg}</div></div>
      <div class="stat alt"><div class="k">Not started</div><div class="v">${nNot}</div></div>
    </div>
-   ${needs.length?`<div class="rgroup warn">🕒 Needs approval · ${needs.length}</div>${table(needs)}`
-     :`<div class="rgroup" style="color:var(--muted)">Nothing waiting for approval for this period.</div>`}
-   ${waiting.length?`<div class="rgroup warn" style="margin-top:18px">⚠︎ Still to do · ${waiting.length}</div>${table(waiting)}`:``}
-   ${completed.length?`<details class="logwrap" style="margin-top:18px"><summary>✓ Completed · ${completed.length}</summary>${table(completed)}</details>`:``}`;
+   ${done.length?`<div class="rgroup">✓ Completed · ${done.length}${needs.length?` <span style="color:var(--pending);font-weight:600">— ${needs.length} awaiting your approval</span>`:""}</div>${table(done)}`
+     :`<div class="rgroup" style="color:var(--muted)">No completed timesheets yet for this period.</div>`}
+   ${inprog.length?`<div class="rgroup" style="margin-top:18px">◐ In progress · ${inprog.length}</div>${table(inprog)}`:``}
+   ${notstart.length?`<div class="rgroup" style="margin-top:18px;color:var(--muted)">⚠︎ Not started · ${notstart.length}</div>${table(notstart)}`:``}`;
 }
 
 /* ---- inline editable grid for one employee ---- */
