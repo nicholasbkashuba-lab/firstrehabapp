@@ -928,7 +928,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=27;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=28;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -2237,12 +2237,12 @@ function viewPayroll(v){
   const emps=DB.employees.filter(e=>e.active && !e.salaried).sort((a,b)=>a.name.localeCompare(b.name));
   const R=true;
   const rows=emps.map(e=>{const ts=getTS(e.id,tsPeriod);return {e,ts,
-    am:amHours(ts,R),pm:pmHours(ts,R),note:noteHours(ts,R),ot:periodOT(ts,R),pto:tsVac(ts),total:tsTotal(ts,R),
+    am:amHours(ts,R),pm:pmHours(ts,R),note:noteHours(ts,R),ot:periodOT(ts,R),pto:tsVac(ts),hol:tsHol(ts,R),total:tsTotal(ts,R),
     entered:tsHasEntries(ts),done:!!ts.submitted||!!ts.approvedBy};});
-  const anyNotes=rows.some(r=>r.note>0);
+  const anyNotes=rows.some(r=>r.note>0), anyHol=rows.some(r=>r.hol>0);
   const sum=k=>round(rows.reduce((s,r)=>s+r[k],0));
-  const cols=["am","pm",...(anyNotes?["note"]:[]),"ot","pto","total"];
-  const head={am:"Morning",pm:"Afternoon",note:"Notes",ot:"OT",pto:"Time off",total:"Total"};
+  const cols=["am","pm",...(anyNotes?["note"]:[]),"ot","pto",...(anyHol?["hol"]:[]),"total"];
+  const head={am:"Morning",pm:"Afternoon",note:"Notes",ot:"OT",pto:"Time off",hol:"Holiday",total:"Total"};
   const body=rows.map(r=>`<tr class="clickrow" onclick="openAdminSheetFrom('${r.e.id}')">
       <td><b>${esc(r.e.name)}</b><div style="font-size:11px;color:${r.done?'var(--ok)':r.entered?'var(--pending)':'var(--warn)'}">${r.done?'✓ done':r.entered?'◐ in progress':'⚠︎ not started'}</div></td>
       ${cols.map(c=>`<td class="num ${c==='total'?'grand':''} ${c==='ot'&&r.ot>0?'otcell':''}">${r[c]?round(r[c]):'—'}</td>`).join("")}
@@ -2260,8 +2260,8 @@ function viewPayroll(v){
 function openAdminSheetFrom(id){ TAB="timesheets"; tsDetailEmp=id; render(); window.scrollTo(0,0); }
 function exportPayrollCSV(){
   const emps=DB.employees.filter(e=>e.active && !e.salaried).sort((a,b)=>a.name.localeCompare(b.name));
-  const R=true; const rowsCsv=[["Employee","Morning","Afternoon","Notes","OT","Time off","Total","Status"]];
-  emps.forEach(e=>{const ts=getTS(e.id,tsPeriod); rowsCsv.push([e.name,round(amHours(ts,R)),round(pmHours(ts,R)),round(noteHours(ts,R)),round(periodOT(ts,R)),round(tsVac(ts)),round(tsTotal(ts,R)),ts.approvedBy?"Approved":ts.submitted?"Submitted":tsHasEntries(ts)?"In progress":"Not started"]);});
+  const R=true; const rowsCsv=[["Employee","Morning","Afternoon","Notes","OT","Time off","Holiday","Total","Status"]];
+  emps.forEach(e=>{const ts=getTS(e.id,tsPeriod); rowsCsv.push([e.name,round(amHours(ts,R)),round(pmHours(ts,R)),round(noteHours(ts,R)),round(periodOT(ts,R)),round(tsVac(ts)),round(tsHol(ts,R)),round(tsTotal(ts,R)),ts.approvedBy?"Approved":ts.submitted?"Submitted":tsHasEntries(ts)?"In progress":"Not started"]);});
   const csv=rowsCsv.map(r=>r.map(x=>{x=String(x);return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;}).join(",")).join("\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="FirstRehab_Payroll_"+fmtD(tsPeriod).replace(/\//g,"-")+".csv"; a.click();
   flash("Payroll CSV downloaded");
@@ -2814,10 +2814,14 @@ function clockOut(){
 }
 function segHours(seg,useRound){ let i=hmToMin(seg.in), o=hmToMin(seg.out); if(i==null||o==null) return 0; if(useRound){i=roundMin(i);o=roundMin(o);} let d=o-i; if(d<0)d+=1440; return d/60; }
 function dayWorked(day,useRound){ return (day.segs||[]).reduce((s,seg)=>s+segHours(seg,useRound),0); }
-function dayTotal(day,useRound){ return dayWorked(day,useRound)+(+day.vac||0); }
+/* Paid holiday: the ✓ tops the day up to a full 8 h — work a half day and holiday pay fills the rest.
+   Never adds beyond 8, and holiday hours don't count toward the 80-h overtime threshold. */
+function holCredit(day,useRound){ return day.hol ? Math.max(0, 8 - dayWorked(day,useRound)) : 0; }
+function dayTotal(day,useRound){ return dayWorked(day,useRound)+(+day.vac||0)+holCredit(day,useRound); }
 function tsWorked(ts,useRound){ return ts.days.reduce((s,d)=>s+dayWorked(d,useRound),0); }
 function tsVac(ts){ return ts.days.reduce((s,d)=>s+(+d.vac||0),0); }
-function tsTotal(ts,useRound){ return tsWorked(ts,useRound)+tsVac(ts); }
+function tsHol(ts,useRound){ return ts.days.reduce((s,d)=>s+holCredit(d,useRound),0); }
+function tsTotal(ts,useRound){ return tsWorked(ts,useRound)+tsVac(ts)+tsHol(ts,useRound); }
 function tsWorkedYear(empId,y,useRound){ return DB.timesheets.filter(t=>t.empId===empId).reduce((s,t)=>s+t.days.filter(d=>yearOf(d.date)===y).reduce((a,d)=>a+dayWorked(d,useRound),0),0); }
 function buildEmptyTS(empId,startDt){ const days=[]; for(let i=0;i<14;i++){const dt=new Date(startDt.getTime()+i*86400000); days.push({date:fmtD(dt),segs:[],vac:0,notes:""});} return {id:null,empId,start:fmtD(startDt),submitted:false,approvedBy:"",days}; }
 function findTS(empId,startStr){ return DB.timesheets.find(t=>t.empId===empId&&t.start===startStr); }
@@ -2833,13 +2837,13 @@ function renderTimesheet(v, empId, isAdmin){
   const startStr=fmtD(tsPeriod);
   const ts=getTS(empId,tsPeriod);
   const me=emp(empId);
-  const worked=tsWorked(ts,R), vac=tsVac(ts), total=tsTotal(ts,R);
+  const worked=tsWorked(ts,R), vac=tsVac(ts), hol=tsHol(ts,R), total=tsTotal(ts,R);
   const dowNames=["MON","TUES","WED","THURS","FRI","SAT","SUN"];
   function dayCard(d,i){
     const dt=parseD(d.date), dow=(dt.getDay()+6)%7, weekend=dow>=5;
     const segs=(d.segs||[]).filter(s=>s.in&&s.out);
     const dt2=dayTotal(d,R);
-    const isHol=(d.notes||"").toLowerCase().includes("holiday");
+    const isHol=!!d.hol||(d.notes||"").toLowerCase().includes("holiday");
     const tdy=new Date(); tdy.setHours(0,0,0,0); const isToday=+dt===+tdy;
     const showTime=hm=>fmt12(R?minToHM(roundMin(hmToMin(hm))):hm);
     const KM={am:["AM","k-am"],pm:["PM","k-pm"],note:["NOTE","k-note"]};
@@ -2849,11 +2853,12 @@ function renderTimesheet(v, empId, isAdmin){
         <div class="ts-total ${dt2===0?"zero":""}">${dt2?round(dt2)+"h":"—"}</div>
       </div>
       <div class="ts-segs">
-        ${segs.length?segs.map(s=>{const h=segHours(s,R);const km=KM[segKind(s)]||KM.am;return `<div class="ts-seg"><span class="seg-lbl ${km[1]}">${km[0]}</span><span class="seg-time">${showTime(s.in)}–${showTime(s.out)}</span><b>${round(h)}h</b></div>`;}).join(""):(d.vac>0?"":'<div class="ts-empty">No time logged</div>')}
+        ${segs.length?segs.map(s=>{const h=segHours(s,R);const km=KM[segKind(s)]||KM.am;return `<div class="ts-seg"><span class="seg-lbl ${km[1]}">${km[0]}</span><span class="seg-time">${showTime(s.in)}–${showTime(s.out)}</span><b>${round(h)}h</b></div>`;}).join(""):(d.vac>0||d.hol?"":'<div class="ts-empty">No time logged</div>')}
+        ${d.hol?`<div class="ts-vac">🎆 Holiday${holCredit(d,R)?` +${round(holCredit(d,R))}h${dayWorked(d,R)?" → 8h":""}`:""}</div>`:""}
         ${d.vac>0?`<div class="ts-vac">🌴 ${round(d.vac)}h ${esc((d.notes||"PTO").split(" ")[0])}</div>`:""}
         ${d.notes&&d.vac===0&&!isHol?`<div class="ts-note">${esc(d.notes)}</div>`:""}
       </div>
-      <button class="ts-edit ${segs.length||d.vac?"":"add"}" onclick="openDay('${empId}','${startStr}',${i})">${segs.length||d.vac?"Edit":"＋ Add time"}</button>
+      <button class="ts-edit ${segs.length||d.vac||d.hol?"":"add"}" onclick="openDay('${empId}','${startStr}',${i})">${segs.length||d.vac||d.hol?"Edit":"＋ Add time"}</button>
     </div>`;
   }
   const wk=(a,b)=>ts.days.slice(a,b).map((d,idx)=>dayCard(d,a+idx)).join("");
@@ -2864,7 +2869,7 @@ function renderTimesheet(v, empId, isAdmin){
   const daysWorked=ts.days.filter(d=>dayWorked(d,R)>0).length;
   const am=amHours(ts,R),pm=pmHours(ts,R),note=noteHours(ts,R),ot=periodOT(ts,R);
   const metrics=`<div class="ts-metrics">
-     <div class="tm big"><div class="tm-k">Total hours</div><div class="tm-v">${round(total)}<small>h</small></div><div class="tm-sub">${daysWorked} ${daysWorked===1?"day":"days"} worked${vac>0?` · ${round(vac)}h off`:""}</div></div>
+     <div class="tm big"><div class="tm-k">Total hours</div><div class="tm-v">${round(total)}<small>h</small></div><div class="tm-sub">${daysWorked} ${daysWorked===1?"day":"days"} worked${vac>0?` · ${round(vac)}h off`:""}${hol>0?` · ${round(hol)}h holiday`:""}</div></div>
      <div class="tm"><div class="tm-k">☀️ Morning</div><div class="tm-v">${round(am)}<small>h</small></div></div>
      <div class="tm"><div class="tm-k">🌤️ Afternoon</div><div class="tm-v">${round(pm)}<small>h</small></div></div>
      ${note>0?`<div class="tm"><div class="tm-k">📝 Notes</div><div class="tm-v">${round(note)}<small>h</small></div></div>`:""}
@@ -2923,7 +2928,7 @@ function hasNotes(ts){ return ts.days.some(d=>segsOf(d,"note").length); }
 function weekWorked(ts,wk,R){ const a=wk*7; return ts.days.slice(a,a+7).reduce((s,d)=>s+dayWorked(d,R),0); }
 /* overtime = hours actually worked beyond 80 in the two-week pay period → banked time */
 function periodOT(ts,R){ return Math.max(0, tsWorked(ts,R) - 80); }
-function tsHasEntries(ts){ return ts.days.some(d=>(d.segs||[]).some(s=>s.in&&s.out) || (+d.vac||0)>0); }
+function tsHasEntries(ts){ return ts.days.some(d=>(d.segs||[]).some(s=>s.in&&s.out) || (+d.vac||0)>0 || d.hol); }
 function statusPill(ts){
   return ts.approvedBy?`<span class="st-pill st-approved">✓ Approved</span>`
     : ts.submitted?`<span class="st-pill st-approved">✓ Submitted</span>`
@@ -2981,14 +2986,14 @@ function renderPayout(v){
   const rows=emps.map(e=>{
     const r=RATES[e.id]||{rate:0,salary:0,fit:0,ss:0,med:0,ded:0,er:0};
     const ts=getTS(e.id,tsPeriod);
-    const worked=tsWorked(ts,true), vac=tsVac(ts);
+    const worked=tsWorked(ts,true), vac=tsVac(ts), hol=tsHol(ts,true);
     let gross=0, detail="", hrs="";
     if(r.salary>0){ gross=r.salary; detail="Salary"; hrs="—"; }
     else if(e.salaried){ gross=80*r.rate; detail="Salaried · 80 h/period"; hrs="80"; }
     else{
       const payH=Math.min(worked,80), banked=Math.max(0,worked-80);
-      gross=(payH+vac)*r.rate; hrs=round(payH+vac)+"";
-      detail=`${round(payH)} h worked${vac?` + ${round(vac)} h time off`:""}${banked?` · ${round(banked)} h → banked`:""}`;
+      gross=(payH+vac+hol)*r.rate; hrs=round(payH+vac+hol)+"";
+      detail=`${round(payH)} h worked${vac?` + ${round(vac)} h time off`:""}${hol?` + ${round(hol)} h holiday`:""}${banked?` · ${round(banked)} h → banked`:""}`;
     }
     const fit=gross*(r.fit||0), ss=gross*(r.ss||0), med=gross*(r.med||0);
     const ded=gross>0?(r.ded||0):0;
@@ -3044,7 +3049,7 @@ function renderAdminRoster(v){
     return {e,ts,st,started,total:tsTotal(ts,true)};});
   const needs=rows.filter(r=>r.st==="submitted");
   const completed=rows.filter(r=>r.st==="approved");
-  const done=[...needs,...completed];                       // finished sheets — ones awaiting approval first
+  const done=[...needs,...completed].sort((a,b)=>a.e.name.localeCompare(b.e.name));   // finished sheets, A→Z
   const inprog=rows.filter(r=>r.st==="inprogress");
   const notstart=rows.filter(r=>r.st==="notstarted");
   const nInProg=inprog.length, nNot=notstart.length;
@@ -3141,7 +3146,7 @@ function openDay(empId,startStr,idx){
   const sh=dayShifts(src);
   const st={mIn:sh.am.in,mOut:sh.am.out,aIn:sh.pm.in,aOut:sh.pm.out,nIn:sh.note.in,nOut:sh.note.out};
   /* restore anything typed here that never got saved (survives refreshes, crashes, everything) */
-  let draftVac=+src.vac||0, draftNotes=src.notes||"", restored=false;
+  let draftVac=+src.vac||0, draftNotes=src.notes||"", draftHol=!!src.hol, restored=false;
   try{
     const raw=sessionStorage.getItem("_dayDraft");
     if(raw){ const dr=JSON.parse(raw);
@@ -3149,10 +3154,11 @@ function openDay(empId,startStr,idx){
         Object.assign(st,dr.shift||{});
         if(dr.vac!=="") draftVac=parseFloat(dr.vac)||0;
         if(dr.notes) draftNotes=dr.notes;
+        if(dr.hol!==undefined) draftHol=!!dr.hol;
         restored=true;
       } }
   }catch(e){}
-  window._editDay={empId,startStr,idx,date:src.date,admin,flex,shift:st,vac:draftVac,notes:draftNotes,restored};
+  window._editDay={empId,startStr,idx,date:src.date,admin,flex,shift:st,vac:draftVac,notes:draftNotes,hol:draftHol,restored};
   const dt=parseD(src.date);
   const helper = admin
     ? `<div class="round-hint">Totals round <b>${ROUND_MODE==="off"?"exactly as entered":ROUND_MODE+" to the quarter hour"}</b> (e.g. 9:10 → 9:15).</div>`
@@ -3188,6 +3194,10 @@ function openDay(empId,startStr,idx){
     </div>
     ${noteBlock}
     ${helper}
+    <div class="field" style="margin:12px 0 0">
+      <label style="display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;color:var(--ink)"><input type="checkbox" id="d_hol" ${draftHol?"checked":""} onchange="recalcDay()" style="width:17px;height:17px;accent-color:var(--gold)"> 🎆 Paid holiday — counts as a full 8 h day</label>
+      <div class="round-hint" style="margin-top:5px">Worked a half day on the holiday? Enter the time above too — holiday pay fills the rest, and the day still totals exactly 8 h.</div>
+    </div>
     <div class="row2">
       <div class="field"><label>Time off hours</label><input class="inp" id="d_vac" type="number" step="0.25" value="${window._editDay.vac?round(window._editDay.vac):""}" placeholder="0" oninput="recalcDay()"></div>
       <div class="field"><label>Notes</label><input class="inp" id="d_notes" value="${esc(window._editDay.notes||"")}" placeholder="e.g. Holiday" oninput="recalcDay()"></div>
@@ -3246,11 +3256,12 @@ function shiftSegs(){
   return out;
 }
 function saveDayDraft(){ try{ const e=window._editDay; if(!e) return;
-  sessionStorage.setItem("_dayDraft",JSON.stringify({key:`${e.empId}|${e.startStr}|${e.idx}`,shift:e.shift,vac:($("#d_vac")?$("#d_vac").value:""),notes:($("#d_notes")?$("#d_notes").value:""),ts:Date.now()})); }catch(err){} }
-function recalcDay(){ const vac=parseFloat($("#d_vac")?.value)||0; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac)+" h"; saveDayDraft(); }
-function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; window._editDay.vac=0; saveDay(); }
-function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const segs=shiftSegs(); const ts=ensureTS(empId,startStr);
+  sessionStorage.setItem("_dayDraft",JSON.stringify({key:`${e.empId}|${e.startStr}|${e.idx}`,shift:e.shift,vac:($("#d_vac")?$("#d_vac").value:""),notes:($("#d_notes")?$("#d_notes").value:""),hol:!!($("#d_hol")&&$("#d_hol").checked),ts:Date.now()})); }catch(err){} }
+function recalcDay(){ const vac=parseFloat($("#d_vac")?.value)||0; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const hol=$("#d_hol")&&$("#d_hol").checked?Math.max(0,8-worked):0; const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac+hol)+" h"+(hol?" (incl. "+round(hol)+"h holiday)":""); saveDayDraft(); }
+function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; const h=$("#d_hol"); if(h)h.checked=false; window._editDay.vac=0; saveDay(); }
+function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const hol=!!($("#d_hol")&&$("#d_hol").checked); const segs=shiftSegs(); const ts=ensureTS(empId,startStr);
   const day={date:ts.days[idx].date,segs,vac,notes};
+  if(hol) day.hol=true;
   if(!segs.length) day.cleared=true;   // an intentionally emptied day — tells the server this isn't accidental loss
   ts.days[idx]=day;
   try{sessionStorage.removeItem("_dayDraft");}catch(e){} save();closeModal();render(); }
@@ -3281,10 +3292,11 @@ function printTimesheet(empId,startStr){
       ${row("Time in",d=>cellTimes(d,1))}
       ${row("Time out",d=>cellOut(d,1))}
       ${row("Vacation",d=>d.vac?round(d.vac):"")}
+      ${row("Holiday",d=>d.hol?round(holCredit(d,R)):"")}
       ${row("Notes",d=>esc(d.notes||""))}
-      <tr class="totalrow"><td class="lbl">TOTAL</td>${cols.map(c=>`<td class="${c.we?"weekend":""}">${dayTotal(c.d)?round(dayTotal(c.d)):""}</td>`).join("")}</tr>
+      <tr class="totalrow"><td class="lbl">TOTAL</td>${cols.map(c=>`<td class="${c.we?"weekend":""}">${dayTotal(c.d,R)?round(dayTotal(c.d,R)):""}</td>`).join("")}</tr>
     </table>
-    <div class="psheet-foot"><span>Hours worked: ${round(tsWorked(ts,R))}</span><span>Vacation/PTO: ${round(tsVac(ts))}</span><span>Period total: ${round(tsTotal(ts,R))} h</span></div>`;
+    <div class="psheet-foot"><span>Hours worked: ${round(tsWorked(ts,R))}</span><span>Vacation/PTO: ${round(tsVac(ts))}</span>${tsHol(ts,R)?`<span>Holiday: ${round(tsHol(ts,R))}</span>`:""}<span>Period total: ${round(tsTotal(ts,R))} h</span></div>`;
   $("#printArea").innerHTML=doc;
   $("#printDocScreen").innerHTML=doc;
   $("#printOverlay").classList.add("on");
