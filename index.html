@@ -928,7 +928,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=28;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=29;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -2244,7 +2244,7 @@ function viewPayroll(v){
   const cols=["am","pm",...(anyNotes?["note"]:[]),"ot","pto",...(anyHol?["hol"]:[]),"total"];
   const head={am:"Morning",pm:"Afternoon",note:"Notes",ot:"OT",pto:"Time off",hol:"Holiday",total:"Total"};
   const body=rows.map(r=>`<tr class="clickrow" onclick="openAdminSheetFrom('${r.e.id}')">
-      <td><b>${esc(r.e.name)}</b><div style="font-size:11px;color:${r.done?'var(--ok)':r.entered?'var(--pending)':'var(--warn)'}">${r.done?'✓ done':r.entered?'◐ in progress':'⚠︎ not started'}</div></td>
+      <td><b>${esc(r.e.name)}</b><div style="font-size:11px;color:${r.done?'var(--ok)':r.entered?'var(--pending)':'var(--warn)'}">${r.done?'✓ done':r.entered?'◐ in progress':'⚠︎ not started'}</div>${editChip(r.ts,r.e.id)}</td>
       ${cols.map(c=>`<td class="num ${c==='total'?'grand':''} ${c==='ot'&&r.ot>0?'otcell':''}">${r[c]?round(r[c]):'—'}</td>`).join("")}
     </tr>`).join("");
   v.innerHTML=`
@@ -2798,8 +2798,11 @@ function clockIn(){
   if(!day){flash("Today isn't in this pay period");return;}
   if((day.segs||[]).find(s=>s.in&&!s.out)){flash("You're already checked in");return;}
   const hm=nowHM();
+  const wasIn=daySummary(day);
   day.segs=day.segs||[];
   day.segs.push({in:hm,out:"",shift:(+hm.split(":")[0])<12?"am":"pm"});
+  logEdit(ts,day.date,wasIn,daySummary(day));
+  stampEdit(day);
   save(true);render();flash(`Checked in at ${ampm(hm)} ✓ Have a great shift!`);
 }
 function clockOut(){
@@ -2807,9 +2810,11 @@ function clockOut(){
   const t=fmtD(new Date()); const day=ts.days.find(d=>d.date===t);
   const open=day&&(day.segs||[]).find(s=>s.in&&!s.out);
   if(!open){flash("You're not checked in");return;}
-  const hm=nowHM();
-  if(hmToMin(hm)<=hmToMin(open.in)){ day.segs=day.segs.filter(s=>s!==open); save(true); render(); flash("Check-in cancelled"); return; }
+  const hm=nowHM(), wasOut=daySummary(day);
+  if(hmToMin(hm)<=hmToMin(open.in)){ day.segs=day.segs.filter(s=>s!==open); logEdit(ts,day.date,wasOut,daySummary(day)); stampEdit(day); save(true); render(); flash("Check-in cancelled"); return; }
   open.out=hm;
+  logEdit(ts,day.date,wasOut,daySummary(day));
+  stampEdit(day);
   save(true);render();flash(`Checked out at ${ampm(hm)} — ${round(segHours(open,false))}h logged ✓`);
 }
 function segHours(seg,useRound){ let i=hmToMin(seg.in), o=hmToMin(seg.out); if(i==null||o==null) return 0; if(useRound){i=roundMin(i);o=roundMin(o);} let d=o-i; if(d<0)d+=1440; return d/60; }
@@ -2884,6 +2889,7 @@ function renderTimesheet(v, empId, isAdmin){
      <div class="cal-nav"><button onclick="tsStep(-1)">‹</button><div class="cal-month" style="min-width:210px;font-size:18px">${periodLabel(tsPeriod)}</div><button onclick="tsStep(1)">›</button></div>
      <div class="grow"></div>
      ${isAdmin?roundSel():""}
+     ${isAdmin&&findTS(empId,startStr)&&(findTS(empId,startStr).log||[]).length?`<button class="btn ghost" onclick="showTSLog('${empId}','${startStr}')">✎ Edits</button>`:""}
      <button class="btn ghost" onclick="printTimesheet('${empId}','${startStr}')">🖨 Print</button>
      ${isAdmin
        ? (ts.approvedBy?`<button class="btn ghost" onclick="unapproveTS('${empId}','${startStr}')">Un-approve</button>`:`<button class="btn" onclick="approveTS('${empId}','${startStr}')">Approve</button>`)
@@ -2929,6 +2935,47 @@ function weekWorked(ts,wk,R){ const a=wk*7; return ts.days.slice(a,a+7).reduce((
 /* overtime = hours actually worked beyond 80 in the two-week pay period → banked time */
 function periodOT(ts,R){ return Math.max(0, tsWorked(ts,R) - 80); }
 function tsHasEntries(ts){ return ts.days.some(d=>(d.segs||[]).some(s=>s.in&&s.out) || (+d.vac||0)>0 || d.hol); }
+/* Every edit stamps its day (when + who) AND appends a before→after entry to the
+   sheet's edit log, so admins can see exactly what changed without leaving the roster. */
+function stampEdit(day){ day.upd=Date.now(); const w=emp(SESSION); if(w&&w.first) day.updBy=w.first; }
+function daySummary(day){
+  const closed=(day.segs||[]).filter(s=>s.in&&s.out).map(s=>`${fmt12(s.in)}–${fmt12(s.out)}`).join(", ");
+  const open=(day.segs||[]).find(s=>s.in&&!s.out);
+  const bits=[];
+  if(closed) bits.push(closed);
+  if(open) bits.push(`in ${fmt12(open.in)} (on the clock)`);
+  if(+day.vac) bits.push(`${round(+day.vac)}h time off`);
+  if(day.hol) bits.push("holiday ✓");
+  if(day.notes) bits.push(`“${day.notes}”`);
+  return bits.length?`${bits.join(" · ")} — ${round(dayTotal(day,false))}h`:"empty";
+}
+function logEdit(ts,date,b,a){ if(b===a) return;
+  ts.log=ts.log||[]; const w=emp(SESSION);
+  ts.log.push({d:date,b,a,t:Date.now(),w:w?w.first:""});
+  if(ts.log.length>15) ts.log=ts.log.slice(-15);   // keep the sheet light — last 15 edits
+}
+function tsLastEdit(ts){ let best=null; (ts.days||[]).forEach(d=>{ if(d.upd&&(!best||d.upd>best.upd)) best=d; }); return best; }
+function agoStr(t){ const s=(Date.now()-t)/1000;
+  if(s<90) return "just now"; if(s<3600) return Math.round(s/60)+"m ago"; if(s<86400) return Math.round(s/3600)+"h ago";
+  if(s<172800) return "yesterday"; return new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
+function lastEditStr(ts,empId){ const d=tsLastEdit(ts); if(!d) return "";
+  const dt=parseD(d.date), me=emp(empId);
+  const who=d.updBy&&me&&d.updBy!==me.first?` by ${esc(d.updBy)}`:"";
+  return `✎ ${dt.toLocaleDateString("en-US",{weekday:"short"})} ${dt.getDate()} · ${agoStr(d.upd)}${who}`; }
+function editChip(ts,empId){ const le=lastEditStr(ts,empId); if(!le) return "";
+  return `<div style="font-size:11px;color:var(--muted);font-weight:400;cursor:pointer;margin-top:2px" onclick="event.stopPropagation();showTSLog('${empId}','${esc(ts.start)}')" title="See what changed">${le} ›</div>`; }
+function showTSLog(empId,startStr){
+  const ts=findTS(empId,startStr); const me=emp(empId);
+  const log=ts&&ts.log?ts.log.slice().reverse():[];
+  openModal(`<h3>✎ Recent edits — ${esc(me?me.name:"")}</h3><div class="body">
+    <p class="sub" style="margin-top:0">${periodLabel(parseD(startStr))} · newest first — what each day said before the change, and after.</p>
+    ${log.length?log.map(l=>{const dt=parseD(l.d);return `<div class="card" style="margin:0 0 10px;padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><b>${dt.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</b><span style="color:var(--muted)">${agoStr(l.t)}${l.w?` · by ${esc(l.w)}`:""}</span></div>
+      <div style="font-size:13px;margin-top:7px"><span style="display:inline-block;min-width:52px;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">Before</span><span style="color:var(--warn)">${esc(l.b)}</span></div>
+      <div style="font-size:13px;margin-top:3px"><span style="display:inline-block;min-width:52px;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">After</span><b style="color:var(--ok)">${esc(l.a)}</b></div>
+    </div>`;}).join(""):`<div class="empty" style="padding:18px 6px"><div class="big">No edits recorded yet</div>Changes made from now on will show up here with their before &amp; after.</div>`}
+  </div><div class="foot"><button class="btn" onclick="closeModal()">Done</button></div>`);
+}
 function statusPill(ts){
   return ts.approvedBy?`<span class="st-pill st-approved">✓ Approved</span>`
     : ts.submitted?`<span class="st-pill st-approved">✓ Submitted</span>`
@@ -3054,7 +3101,7 @@ function renderAdminRoster(v){
   const notstart=rows.filter(r=>r.st==="notstarted");
   const nInProg=inprog.length, nNot=notstart.length;
   const line=(r)=>`<tr class="clickrow" onclick="openAdminSheet('${r.e.id}')">
-      <td><b style="${r.st==="notstarted"?'color:var(--muted)':''}">${esc(r.e.name)}</b></td>
+      <td><b style="${r.st==="notstarted"?'color:var(--muted)':''}">${esc(r.e.name)}</b>${editChip(r.ts,r.e.id)}</td>
       <td>${statusPill(r.ts)}</td>
       <td class="num">${r.started?round(r.total)+' h':'—'}</td>
       <td class="num"><div class="row-actions" style="justify-content:flex-end">
@@ -3263,6 +3310,8 @@ function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseF
   const day={date:ts.days[idx].date,segs,vac,notes};
   if(hol) day.hol=true;
   if(!segs.length) day.cleared=true;   // an intentionally emptied day — tells the server this isn't accidental loss
+  logEdit(ts,day.date,daySummary(ts.days[idx]),daySummary(day));
+  stampEdit(day);
   ts.days[idx]=day;
   try{sessionStorage.removeItem("_dayDraft");}catch(e){} save();closeModal();render(); }
 
