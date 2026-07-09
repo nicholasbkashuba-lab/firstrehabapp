@@ -928,7 +928,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=29;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=30;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -938,6 +938,40 @@ function snapBase(obj){
 }
 const sameJSON=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
 /* Three-way merge: start from what's in the cloud now, then apply only what WE changed since our last sync. */
+/* Timesheets merge DAY BY DAY, never whole-record: two devices holding different
+   copies of the same sheet can otherwise take turns overwriting each other, and a
+   stale copy would keep erasing afternoons (the exact bug that shrank Cam's days).
+   Per day: an untouched side defers to the edited one; explicit edit stamps (upd)
+   win; with no stamps the fuller day is kept so old thin copies can never erase work. */
+function filledSegsN(d){ return (((d&&d.segs)||[]).filter(s=>s.in&&s.out)).length; }
+function mergeDay(bd,ld,rd){
+  if(sameJSON(ld,rd)) return rd;
+  if(bd&&sameJSON(ld,bd)) return rd;                     // we didn't touch this day → theirs
+  if(bd&&sameJSON(rd,bd)) return ld;                     // they didn't touch it → ours
+  const lu=+((ld&&ld.upd)||0), ru=+((rd&&rd.upd)||0);
+  if(lu!==ru) return lu>ru?ld:rd;                        // freshest real edit wins
+  if(filledSegsN(ld)!==filledSegsN(rd)) return filledSegsN(ld)>filledSegsN(rd)?ld:rd;
+  return dayTotal(ld,false)>=dayTotal(rd,false)?ld:rd;   // never keep the thinner copy
+}
+function mergeTimesheet(bv,lv,rv){
+  const out={};
+  new Set([...Object.keys(lv),...Object.keys(rv)]).forEach(f=>{
+    if(f==="days"||f==="log") return;
+    out[f]=!sameJSON(lv[f],bv?bv[f]:undefined)?lv[f]:rv[f];   // scalar fields: our real change wins, else theirs
+  });
+  const bD=new Map((((bv||{}).days)||[]).map(d=>[d.date,d]));
+  const lD=new Map(((lv.days)||[]).map(d=>[d.date,d]));
+  const dates=[...new Set([...((rv.days)||[]).map(d=>d.date),...((lv.days)||[]).map(d=>d.date)])];
+  out.days=dates.map(dt=>{
+    const ld=lD.get(dt), rd=((rv.days)||[]).find(d=>d.date===dt);
+    if(!ld) return rd; if(!rd) return ld;
+    return mergeDay(bD.get(dt),ld,rd);
+  });
+  const seen=new Set();
+  const log=[...(rv.log||[]),...(lv.log||[])].filter(e=>{const k=(e.t||0)+"|"+(e.d||"");if(seen.has(k))return false;seen.add(k);return true;}).sort((a,b)=>(a.t||0)-(b.t||0)).slice(-15);
+  if(log.length) out.log=log;
+  return out;
+}
 function mergeStates(base,local,remote){
   base=base||{};
   const out=JSON.parse(JSON.stringify(remote));
@@ -953,6 +987,7 @@ function mergeStates(base,local,remote){
       if(lm.has(id)){
         const lv=lm.get(id), bv=bm.get(id);
         if(sameJSON(lv,bv)) res.push(x);                                              // untouched by us → theirs
+        else if(k==="timesheets"&&x&&lv&&Array.isArray(x.days)&&Array.isArray(lv.days)){ res.push(mergeTimesheet(bv,lv,x)); }  // hour sheets merge day by day
         else if(k==="employees"&&bv&&x&&lv){                                          // both may have touched this person → merge FIELD by field
           const out=Object.assign({},x);
           new Set([...Object.keys(lv),...Object.keys(x)]).forEach(f=>{ if(!sameJSON(lv[f],bv[f])) out[f]=lv[f]; });
@@ -2733,10 +2768,10 @@ function saveEmp(editId){
   if(editId){
     const cur=emp(editId);
     const emailChanged=cur.hasLogin && (cur.email||"").trim().toLowerCase()!==email.toLowerCase();
-    Object.assign(cur,{name,first,last,email,phone,payType,status,vacAllot,otBank,role,active,salaried,notesTime,bday,getsPto});
+    Object.assign(cur,{name,first,last,email,phone,payType,status,vacAllot,otBank,role,active,salaried,notesTime,bday,getsPto,eupd:Date.now()});
     if(emailChanged){ cur.hasLogin=false; flash(`${first}'s login email changed — have them tap "First time here" to set a password with the new email`); }
   }
-  else DB.employees.push({id:uid("e"),name,first,last,email,phone,payType,status,vacAllot,otBank,role,active,salaried,notesTime,bday,getsPto});
+  else DB.employees.push({id:uid("e"),name,first,last,email,phone,payType,status,vacAllot,otBank,role,active,salaried,notesTime,bday,getsPto,eupd:Date.now()});
   save();closeModal();render();
 }
 function removeEmp(id){
