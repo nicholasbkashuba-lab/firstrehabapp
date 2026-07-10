@@ -39,6 +39,9 @@
 
   /* Preview banner */
   .preview-bar{background:#132a31;color:var(--gold);font-size:12.5px;text-align:center;padding:7px 14px;letter-spacing:.3px}
+  .emp-view-bar{position:sticky;top:0;z-index:70;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;background:#4a2f7d;color:#fff;font-size:13px;padding:9px 14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  .emp-view-bar b{color:#ffd98a}
+  .emp-view-bar button{background:#ffd98a;color:#2b1a4d;border:0;border-radius:999px;padding:5px 16px;font-weight:800;font-size:12.5px;cursor:pointer;margin-left:6px}
   .preview-bar b{color:var(--cream)}
 
   /* ---------- LOGIN ---------- */
@@ -931,7 +934,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=31;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=32;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1400,7 +1403,17 @@ function toCovers(t,date){
 }
 const uid=p=>p+Math.random().toString(36).slice(2,7);
 const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const emp=id=>DB.employees.find(e=>e.id===id);
+/* Employee view (admins only): see the app EXACTLY as an employee sees it.
+   While active, every role check in the app reads this admin as a plain employee —
+   a read-only disguise on a copy; the real record is never touched. */
+let VIEW_AS_EMP=false;
+const emp=id=>{
+  const e=DB.employees.find(x=>x.id===id);
+  if(e && VIEW_AS_EMP && id===SESSION) return Object.assign({},e,{role:"employee"});
+  return e;
+};
+function startEmpView(){ VIEW_AS_EMP=true; TAB="me"; closeModal(); render(); window.scrollTo(0,0); flash("👁 Employee view on — this is exactly what your team sees"); }
+function exitEmpView(){ VIEW_AS_EMP=false; TAB="dash"; render(); window.scrollTo(0,0); flash("Back to admin view"); }
 const empName=id=>{const e=emp(id);return e?e.name:"—";};
 const initials=n=>n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
 function yearOf(m){const p=String(m).split("/");return p.length===3?parseInt(p[2]):null;}
@@ -1520,6 +1533,7 @@ function render(){
      <button class="bell" onclick="openNotify()" title="Notifications & email" aria-label="Notifications">🔔</button>
      <button class="signout" onclick="signOut()">Sign out</button>
    </div></header>
+   ${VIEW_AS_EMP?`<div class="emp-view-bar">👁 <b>Employee view</b> — you're seeing exactly what your team sees. Admin tools are hidden.<button onclick="exitEmpView()">Exit</button></div>`:""}
    ${notifBannerHTML()}
    <div class="tabbar"><nav class="tabs">${tabs.map(([id,l])=>`<button class="tab ${TAB===id?"active":""}" onclick="setTab('${id}')">${l}${id==="timeoff"&&pendingCount()?` · ${pendingCount()}`:""}${id==="inbox"&&inboxCount()?` · ${inboxCount()}`:""}${id==="chat"&&chatUnread()?` · ${chatUnread()}`:""}</button>`).join("")}</nav></div>
    <div class="wrap" id="view"></div>
@@ -1780,6 +1794,7 @@ function openMoreNav(){
     ${rest.map(([id,ico,lbl])=>`<button class="more-tile" onclick="closeModal();setTab('${id}')"><span>${ico}</span>${lbl}</button>`).join("")}
     <button class="more-tile" onclick="closeModal();openProfile()"><span>👤</span>My details</button>
     <button class="more-tile" onclick="closeModal();openNotify()"><span>🔔</span>Notifications</button>
+    ${admin?`<button class="more-tile" onclick="startEmpView()"><span>👁</span>Employee view</button>`:""}
     <button class="more-tile" onclick="closeModal();signOut()"><span>🚪</span>Sign out</button>
   </div></div><div class="foot"><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
 }
@@ -2072,7 +2087,7 @@ async function saveChangePw(){
   catch(e){ flash(e.message||"Couldn't update password"); }
 }
 function saveProfile(){
-  const me=emp(SESSION);
+  const me=DB.employees.find(e=>e.id===SESSION);   // the real record — edits persist even inside Employee view
   const name=$("#pf_name").value.trim()||me.name;
   me.name=name; me.first=name.split(" ")[0]; me.last=name.split(" ").slice(1).join(" ");
   me.email=$("#pf_email").value.trim(); me.phone=$("#pf_phone").value.trim(); me.bday=$("#pf_bday").value.trim();
