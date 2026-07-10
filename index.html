@@ -475,6 +475,7 @@
   .bubble{max-width:78%;background:var(--white);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:14.5px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
   .bubble-row.mine .bubble{background:var(--teal);color:var(--cream);border:none;border-radius:14px 14px 4px 14px}
   .bubble .bt{font-size:10px;opacity:.65;margin-top:4px;text-align:right}
+  .bubble .who{font-size:10.5px;font-weight:800;color:var(--teal);margin-bottom:2px;letter-spacing:.02em}
   .chat-empty{color:var(--muted);text-align:center;margin:auto;font-size:14px}
   .chat-inputrow{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--white)}
   .chat-inputrow input{flex:1;border:1px solid var(--line);border-radius:22px;padding:11px 16px;font-size:15px}
@@ -818,6 +819,14 @@ function normalizeDB(){
   DB.feedback  = DB.feedback||[];
   DB.media     = DB.media||[];
   DB.events    = DB.events||[];
+  DB.groups    = DB.groups||[];
+  if(!DB._groups1){                                     // one-time: starter group chats
+    const mk=(id,name,icon,members,all)=>{ if(!DB.groups.some(g=>g&&g.id===id)) DB.groups.push({id,name,icon,members:members||[],all:!!all,ts:Date.now()}); };
+    mk("g_everyone","Everyone","🏥",[],true);           // automatically includes the whole team
+    mk("g_wellness","Wellness","🧘",["e39","e57","e60","e65","e32","e54"]);       // Dave K, Nick, Sandra, Vicki, Brad, Matthew
+    mk("g_therapists","Therapists","🩺",["e39","e57","e45","e40","e47","e51","e37"]);  // Dave K, Nick, Joni, David V, Kayla, Logan, Chuck
+    DB._groups1=1;
+  }
   DB.clinic    = DB.clinic||(SEED.clinic)||{name:"First Rehabilitation",addr1:"733 U.S. Highway One, Suite 2A",addr2:"North Palm Beach, FL 33408"};
   DB.clinic.authRequired=true;   // login is always required — no passwordless access
   if(!DB.roundMode) DB.roundMode="nearest";
@@ -934,8 +943,8 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=34;   // client version (drives auto-update); the DB save-guard floor is v25
-const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
+const APP_VER=35;   // client version (drives auto-update); the DB save-guard floor is v25
+const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
   try{ BASE=JSON.parse(JSON.stringify(obj)); }catch(e){ BASE=null; }
@@ -1719,13 +1728,63 @@ async function doRecovery(){
 }
 
 /* ================= DIRECT MESSAGES ================= */
-let CHAT_WITH=null, CHAT_DRAFT="";
+let CHAT_WITH=null, CHAT_GROUP=null, CHAT_DRAFT="";
 function rmFor(mine,other){ return (DB.readmarks||[]).find(r=>r.id===mine+"|"+other); }
 function chatUnreadFrom(other){ const rm=rmFor(SESSION,other); const since=rm?rm.ts:0; return (DB.messages||[]).filter(m=>m.from===other&&m.to===SESSION&&m.ts>since).length; }
-function chatUnread(){ if(!SESSION||!DB)return 0; const others=new Set((DB.messages||[]).filter(m=>m.to===SESSION).map(m=>m.from)); let n=0; others.forEach(o=>n+=chatUnreadFrom(o)); return n; }
+/* ---- group chats ---- */
+function groupById(id){ return (DB.groups||[]).find(g=>g&&g.id===id); }
+function groupMembers(g){ if(!g) return [];
+  const act=DB.employees.filter(e=>e.active!==false);
+  if(g.all) return act;
+  return (g.members||[]).map(id=>act.find(e=>e.id===id)).filter(Boolean); }
+function inGroup(g,empId){ return groupMembers(g).some(e=>e.id===empId); }
+function myGroups(){ return (DB.groups||[]).filter(g=>inGroup(g,SESSION)); }
+function groupMsgs(gid){ return (DB.messages||[]).filter(m=>m.gid===gid).sort((a,b)=>a.ts-b.ts); }
+function chatUnreadGroup(gid){ if(!inGroup(groupById(gid),SESSION)) return 0; const rm=rmFor(SESSION,gid); const since=rm?rm.ts:0; return (DB.messages||[]).filter(m=>m.gid===gid&&m.from!==SESSION&&m.ts>since).length; }
+function chatUnread(){ if(!SESSION||!DB)return 0; const others=new Set((DB.messages||[]).filter(m=>m.to===SESSION).map(m=>m.from)); let n=0; others.forEach(o=>n+=chatUnreadFrom(o)); myGroups().forEach(g=>n+=chatUnreadGroup(g.id)); return n; }
 function markChatRead(other){ let rm=rmFor(SESSION,other); if(!rm){ rm={id:SESSION+"|"+other,ts:Date.now()}; DB.readmarks.push(rm); } else rm.ts=Date.now(); save(true); }
 function lastMsgWith(other){ const ms=(DB.messages||[]).filter(m=>(m.from===SESSION&&m.to===other)||(m.from===other&&m.to===SESSION)); return ms.length?ms.reduce((a,b)=>a.ts>b.ts?a:b):null; }
-function openChat(other){ CHAT_WITH=other; CHAT_DRAFT=""; markChatRead(other); render(); setTimeout(()=>{ const i=$("#chatInput"); if(i)i.focus(); },60); }
+function openChat(other){ CHAT_WITH=other; CHAT_GROUP=null; CHAT_DRAFT=""; markChatRead(other); render(); setTimeout(()=>{ const i=$("#chatInput"); if(i)i.focus(); },60); }
+function openGroup(gid){ CHAT_GROUP=gid; CHAT_WITH=null; CHAT_DRAFT=""; markChatRead(gid); render(); setTimeout(()=>{ const i=$("#chatInput"); if(i)i.focus(); },60); }
+function sendGroupMsg(){
+  const inp=$("#chatInput"); const text=(inp?inp.value:"").trim(); if(!text||!CHAT_GROUP)return;
+  const g=groupById(CHAT_GROUP); if(!g||!inGroup(g,SESSION)){ flash("You're not in this group"); return; }
+  DB.messages.push({id:uid("m"),from:SESSION,gid:CHAT_GROUP,text,ts:Date.now()});
+  CHAT_DRAFT="";
+  markChatRead(CHAT_GROUP);   // also saves everything
+  sendPushNotify({kind:"group",gid:CHAT_GROUP,title:"💬 "+g.name+" — "+emp(SESSION).first,body:text.slice(0,140),url:"/"});
+  render(); setTimeout(()=>{ const i=$("#chatInput"); if(i)i.focus(); },30);
+}
+function openGroupMembers(gid){
+  const g=groupById(gid); if(!g) return;
+  const admin=emp(SESSION)&&emp(SESSION).role==="admin";
+  const mem=groupMembers(g).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const nonMem=DB.employees.filter(e=>e.active!==false&&!mem.some(m=>m.id===e.id)).sort((a,b)=>a.name.localeCompare(b.name));
+  openModal(`<h3>${g.icon||"👥"} ${esc(g.name)} · ${mem.length} member${mem.length===1?"":"s"}</h3><div class="body">
+    ${g.all?`<div class="round-hint">This group automatically includes <b>everyone on the team</b> — new people join it the day they're added.</div>`:""}
+    <div class="chat-list" style="margin-top:4px">${mem.map(e=>`<div class="chat-item" style="cursor:default">
+      <div class="avatar">${e.photo?`<img src="${e.photo}" alt="">`:initials(e.name)}</div>
+      <div class="ci-mid"><b>${esc(e.name)}</b><div class="ci-prev">${e.role==="admin"?"Admin":"Team member"}</div></div>
+      ${admin&&!g.all?`<button class="btn danger" onclick="removeGroupMember('${g.id}','${e.id}')">Remove</button>`:""}
+    </div>`).join("")}</div>
+    ${admin&&!g.all&&nonMem.length?`<div class="field" style="margin-top:14px"><label>Add someone</label>
+      <div style="display:flex;gap:8px"><select class="inp" id="gm_add" style="flex:1"><option value="">Choose a person…</option>${nonMem.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join("")}</select>
+      <button class="btn" onclick="addGroupMember('${g.id}')">＋ Add</button></div></div>`:""}
+    ${!admin&&!g.all?`<div class="round-hint" style="margin-top:10px">Ask Nick or Dave to add or remove people.</div>`:""}
+  </div><div class="foot"><button class="btn" onclick="closeModal()">Done</button></div>`);
+}
+function addGroupMember(gid){
+  const sel=$("#gm_add"); const id=sel&&sel.value; if(!id){ flash("Pick a person first"); return; }
+  const g=groupById(gid); if(!g||g.all) return;
+  if(!(g.members||[]).includes(id)) g.members=(g.members||[]).concat([id]);
+  g.ts=Date.now(); save(); flash(empName(id)+" added to "+g.name); openGroupMembers(gid);
+}
+function removeGroupMember(gid,id){
+  const g=groupById(gid); if(!g||g.all) return;
+  if(!confirm("Remove "+empName(id)+" from "+g.name+"?")) return;
+  g.members=(g.members||[]).filter(x=>x!==id);
+  g.ts=Date.now(); save(); flash(empName(id)+" removed from "+g.name); openGroupMembers(gid);
+}
 function sendDM(){
   const inp=$("#chatInput"); const text=(inp?inp.value:"").trim(); if(!text||!CHAT_WITH)return;
   DB.messages.push({id:uid("m"),from:SESSION,to:CHAT_WITH,text,ts:Date.now()});
@@ -1740,6 +1799,33 @@ function fmtMsgTime(ts){ const d=new Date(ts), now=new Date();
     ? d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})
     : d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+", "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }
 function viewChat(v){
+  if(CHAT_GROUP){
+    const g=groupById(CHAT_GROUP);
+    if(!g||!inGroup(g,SESSION)){ CHAT_GROUP=null; viewChat(v); return; }
+    if(chatUnreadGroup(CHAT_GROUP)) markChatRead(CHAT_GROUP);   // arriving messages are read while the thread is open
+    const ms=groupMsgs(CHAT_GROUP);
+    const mem=groupMembers(g);
+    v.innerHTML=`
+     <div class="chat-thread card">
+       <div class="chat-head">
+         <button class="btn ghost sm" onclick="CHAT_GROUP=null;render()" aria-label="Back">←</button>
+         <div class="avatar" style="font-size:19px">${g.icon||"👥"}</div>
+         <div style="min-width:0;flex:1"><b>${esc(g.name)}</b><div class="chat-sub">${mem.length} member${mem.length===1?"":"s"}${g.all?" · whole team":""}</div></div>
+         <button class="btn ghost sm" onclick="openGroupMembers('${g.id}')">👥 Members</button>
+       </div>
+       <div class="chat-scroll" id="chatScroll">
+         ${ms.length?ms.map(m=>{ const s=emp(m.from);
+           return `<div class="bubble-row ${m.from===SESSION?"mine":""}"><div class="bubble">${m.from!==SESSION?`<div class="who">${esc(s?s.first:"Former teammate")}</div>`:""}${esc(m.text)}<div class="bt">${fmtMsgTime(m.ts)}</div></div></div>`;}).join("")
+          :`<div class="chat-empty">Say hi to the ${esc(g.name)} group 👋 — everyone in it sees these messages.</div>`}
+       </div>
+       <div class="chat-inputrow">
+         <input id="chatInput" placeholder="Message ${esc(g.name)}…" value="${esc(CHAT_DRAFT)}" oninput="CHAT_DRAFT=this.value" onkeydown="if(event.key==='Enter')sendGroupMsg()" autocomplete="off">
+         <button class="chat-send" onclick="sendGroupMsg()" aria-label="Send">➤</button>
+       </div>
+     </div>`;
+    const box=$("#chatScroll"); if(box)box.scrollTop=box.scrollHeight;
+    return;
+  }
   if(CHAT_WITH){
     const other=emp(CHAT_WITH);
     if(!other){ CHAT_WITH=null; viewChat(v); return; }
@@ -1763,10 +1849,21 @@ function viewChat(v){
     const box=$("#chatScroll"); if(box)box.scrollTop=box.scrollHeight;
     return;
   }
+  const groups=myGroups().slice().sort((a,b)=>{ const la=groupMsgs(a.id).slice(-1)[0], lb=groupMsgs(b.id).slice(-1)[0]; return ((lb?lb.ts:0)-(la?la.ts:0))||a.name.localeCompare(b.name); });
   const people=DB.employees.filter(e=>e.active!==false&&e.id!==SESSION).slice()
     .sort((a,b)=>{ const la=lastMsgWith(a.id),lb=lastMsgWith(b.id); return ((lb?lb.ts:0)-(la?la.ts:0))||a.name.localeCompare(b.name); });
   v.innerHTML=`
-   <div class="section-title"><h2>Messages</h2><span class="hint">Private one-on-one messages with anyone on the team.</span></div>
+   <div class="section-title"><h2>Messages</h2><span class="hint">Group chats and private one-on-one messages.</span></div>
+   ${groups.length?`<div class="section-title sm" style="margin-bottom:6px"><h2 style="font-size:15px">Group chats</h2></div>
+   <div class="chat-list" style="margin-bottom:16px">
+   ${groups.map(g=>{ const ms=groupMsgs(g.id), lm=ms[ms.length-1], un=chatUnreadGroup(g.id), s=lm?emp(lm.from):null;
+     return `<button class="chat-item" onclick="openGroup('${g.id}')">
+       <div class="avatar" style="font-size:19px">${g.icon||"👥"}</div>
+       <div class="ci-mid"><b>${esc(g.name)}</b><div class="ci-prev">${lm?esc((lm.from===SESSION?"You":(s?s.first:"?"))+": "+lm.text.slice(0,50)):groupMembers(g).length+" members"}</div></div>
+       <div class="ci-right">${lm?`<span class="ci-time">${fmtMsgTime(lm.ts)}</span>`:""}${un?`<span class="ci-unread">${un}</span>`:""}</div>
+     </button>`; }).join("")}
+   </div>`:""}
+   <div class="section-title sm" style="margin-bottom:6px"><h2 style="font-size:15px">People</h2></div>
    <div class="chat-list">
    ${people.map(p=>{ const lm=lastMsgWith(p.id), un=chatUnreadFrom(p.id);
      return `<button class="chat-item" onclick="openChat('${p.id}')">
@@ -1858,7 +1955,8 @@ function feedCard(it,admin){
   else if(it.kind==="event") meta=`${it.whenLbl?esc(it.whenLbl):""}${it.author?(it.whenLbl?" · ":"")+"added by "+esc(it.author):""}`;
   else meta=`${esc(it.author)}${it.whenLbl?" · "+esc(it.whenLbl):""}`;
   let actions="";
-  if(admin&&it.kind==="ann") actions=`<div class="row-actions"><button class="btn sm ghost" onclick="openAnnounce('${it.id}')">Edit</button><button class="btn danger" onclick="delAnnounce('${it.id}')">Delete</button></div>`;
+  const mine=it.kind==="ann"&&emp(SESSION)&&it.author===emp(SESSION).name;
+  if((admin||mine)&&it.kind==="ann") actions=`<div class="row-actions"><button class="btn sm ghost" onclick="openAnnounce('${it.id}')">Edit</button><button class="btn danger" onclick="delAnnounce('${it.id}')">Delete</button></div>`;
   else if(admin&&it.kind==="event") actions=`<div class="row-actions"><button class="btn sm ghost" onclick="openEvent(null,'${it.id}')">Edit</button><button class="btn danger" onclick="delEvent('${it.id}')">Remove</button></div>`;
   return `<div class="card announce ${cls}">
      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
@@ -2428,7 +2526,8 @@ function viewMyOverview(v){
   v.innerHTML=`
    <div class="section-title"><h2>Hi ${esc(me.first)} 👋</h2><span class="hint">${dateStr}</span></div>
    ${showTimesheet?clockCardHTML(me.id):""}
-   ${hasActiveFeed()?`<div class="section-title sm"><h2>📣 What's happening</h2></div>${announceListHTML(false)}`:""}
+   <div class="section-title sm"><h2>📣 What's happening</h2><button class="btn sm" onclick="openAnnounce()">＋ Post</button></div>
+   ${announceListHTML(false)}
    ${topRow}
    <div class="qa-grid">
      <button class="qa" onclick="openRequest()"><span class="qa-ic">🌴</span><span>Request<br>time off</span></button>
