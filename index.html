@@ -934,7 +934,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=32;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=33;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1531,6 +1531,7 @@ function render(){
      <button class="cloud-badge ${CLOUD?"ok":"local"}" id="cloudBadge" onclick="showCloudInfo()" title="Sync status">${CLOUD?"☁️ Synced":"⚠︎ This device"}</button>
      <button class="bell install-btn" onclick="installApp()" title="Install the app on this device" aria-label="Install app" style="${canInstall()?"":"display:none"}">📲</button>
      <button class="bell" onclick="openNotify()" title="Notifications & email" aria-label="Notifications">🔔</button>
+     ${admin?`<button class="bell" onclick="startEmpView()" title="Employee view — see the app exactly as your team sees it" aria-label="Employee view">👁</button>`:""}
      <button class="signout" onclick="signOut()">Sign out</button>
    </div></header>
    ${VIEW_AS_EMP?`<div class="emp-view-bar">👁 <b>Employee view</b> — you're seeing exactly what your team sees. Admin tools are hidden.<button onclick="exitEmpView()">Exit</button></div>`:""}
