@@ -772,7 +772,7 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <script>
 /* ================= DATA ================= */
 const SEED = {"employees":[{"id":"e60","name":"Sandra Agel","first":"Sandra","last":"Agel","email":"billing@firstrehabnpb.com","payType":"Hourly","status":"FT","active":true,"role":"employee","vacAllot":80,"salaried":true,"notesTime":false,"bday":"01/13","getsPto":true},{"id":"e31","name":"Ashlyn Barnhart","first":"Ashlyn","last":"Barnhart","email":"ashlynbarnhart@icloud.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"07/26","getsPto":false},{"id":"e62","name":"Susan Citta","first":"Susan","last":"Citta","email":"susancitta@gmail.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"05/24","getsPto":false},{"id":"e55","name":"Mercedes Costa","first":"Mercedes","last":"Costa","email":"costamercedes29@gmail.com","payType":"Hourly","status":"FT","active":true,"role":"employee","vacAllot":80,"salaried":false,"notesTime":false,"bday":"08/29","getsPto":true},{"id":"e35","name":"Cameron Dewar","first":"Cameron","last":"Dewar","email":"camerondewar005@gmail.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"07/22","getsPto":false},{"id":"e47","name":"Kayla Dorsey","first":"Kayla","last":"Dorsey","email":"kmdorsey7@gmail.com","payType":"Hourly","status":"FT","active":true,"role":"employee","vacAllot":80,"salaried":false,"notesTime":true,"bday":"04/07","getsPto":true},{"id":"e50","name":"Laura Drumm","first":"Laura","last":"Drumm","email":"ldrumm828@icloud.com","payType":"1099","status":"FT","active":true,"role":"employee","vacAllot":80,"salaried":false,"notesTime":true,"bday":"08/28","getsPto":true},{"id":"e32","name":"Bradley Henderson","first":"Bradley","last":"Henderson","email":"bradhendersoninc@aol.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"09/16","getsPto":false},{"id":"e45","name":"Joni Janik","first":"Joni","last":"Janik","email":"jcj27@aol.com","payType":"Hourly","status":"FT","active":true,"role":"employee","vacAllot":80,"salaried":false,"notesTime":true,"bday":"10/27","getsPto":true},{"id":"e39","name":"David Kashuba","first":"David","last":"Kashuba","email":"k1rehab@aol.com","payType":"Hourly","status":"FT","active":true,"role":"employee","vacAllot":80,"salaried":true,"notesTime":false,"bday":"12/13","getsPto":true},{"id":"e46","name":"Karen Kashuba","first":"Karen","last":"Kashuba","email":"karenfl708@aol.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"07/17","getsPto":false},{"id":"e57","name":"Nicholas Kashuba","first":"Nicholas","last":"Kashuba","email":"nick@firstrehabnpb.com","payType":"Salaried","status":"FT","active":true,"role":"admin","vacAllot":80,"salaried":true,"notesTime":false,"bday":"09/25","getsPto":true},{"id":"e51","name":"Logan Van Sant","first":"Logan","last":"Sant","email":"loganvansant.pt@gmail.com","payType":"Hourly","status":"FT","active":true,"role":"employee","vacAllot":80,"salaried":false,"notesTime":true,"bday":"05/17","getsPto":true},{"id":"e36","name":"Carla Simoes","first":"Carla","last":"Simoes","email":"carla.s.healingart@gmail.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"08/31","getsPto":false},{"id":"e65","name":"Vicki Stanford","first":"Vicki","last":"Stanford","email":"vickistanford@yahoo.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"06/14","getsPto":false},{"id":"e61","name":"Sarah Szabo","first":"Sarah","last":"Szabo","email":"firstrehabnpbap@gmail.com","payType":"1099","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"02/22","getsPto":false},{"id":"e40","name":"David Valenti","first":"David","last":"Valenti","email":"David.valenti09@gmail.com","payType":"Hourly","status":"FT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":true,"bday":"06/17","getsPto":true},{"id":"e54","name":"Matthew Werner","first":"Matthew","last":"Werner","email":"matthew.werner@me.com","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":false,"bday":"01/28","getsPto":false},{"id":"e37","name":"Chuck Szabo","first":"Chuck","last":"Szabo","email":"","payType":"Hourly","status":"PT","active":true,"role":"employee","vacAllot":40,"salaried":false,"notesTime":true,"bday":"03/13","getsPto":false}],"timeoff":[{"id":"t5","empId":"e62","date":"1/29/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t6","empId":"e62","date":"5/19/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t7","empId":"e62","date":"6/23/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t8","empId":"e62","date":"8/4/2025","end":"","hours":9.0,"type":"Vacation","note":"","status":"approved"},{"id":"t9","empId":"e62","date":"8/11/2025","end":"9/2/2025","hours":9.0,"type":"Vacation","note":"8/11-9 hrs ok per DEK 9/2","status":"approved"},{"id":"t11","empId":"e47","date":"4/7/2025","end":"","hours":8.0,"type":"Vacation","note":"","status":"approved"},{"id":"t12","empId":"e47","date":"7/7/2025","end":"","hours":8.0,"type":"Vacation","note":"","status":"approved"},{"id":"t13","empId":"e47","date":"7/9/2025","end":"","hours":8.0,"type":"Vacation","note":"","status":"approved"},{"id":"t14","empId":"e47","date":"7/11/2025","end":"","hours":8.0,"type":"Vacation","note":"","status":"approved"},{"id":"t15","empId":"e50","date":"2/28/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t16","empId":"e50","date":"3/3/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t17","empId":"e50","date":"3/5/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t18","empId":"e50","date":"3/7/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t19","empId":"e45","date":"5/2/2025","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t20","empId":"e45","date":"8/21/2025","end":"","hours":4.0,"type":"Vacation","note":"","status":"approved"},{"id":"t21","empId":"e45","date":"11/3/2025","end":"","hours":6.4,"type":"Vacation","note":"","status":"approved"},{"id":"t22","empId":"e45","date":"11/4/2025","end":"","hours":6.4,"type":"Vacation","note":"","status":"approved"},{"id":"t23","empId":"e45","date":"11/5/2025","end":"","hours":6.4,"type":"Vacation","note":"","status":"approved"},{"id":"t24","empId":"e45","date":"11/6/2025","end":"","hours":6.4,"type":"Vacation","note":"","status":"approved"},{"id":"t25","empId":"e45","date":"11/7/2025","end":"","hours":6.4,"type":"Vacation","note":"","status":"approved"},{"id":"t32","empId":"e46","date":"12/12/2025","end":"12/17/2025","hours":10.0,"type":"Vacation","note":"12/12 - 12/17 10 hrs","status":"approved"},{"id":"t33","empId":"e62","date":"1/5/2026","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t34","empId":"e62","date":"1/7/2026","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t35","empId":"e62","date":"1/9/2026","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t36","empId":"e62","date":"4/24/2026","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t37","empId":"e47","date":"4/24/2026","end":"","hours":8.0,"type":"Vacation","note":"","status":"approved"},{"id":"t38","empId":"e45","date":"4/6/2026","end":"4/8/2026","hours":20.0,"type":"Vacation","note":"4/6-4/8 20 hrs","status":"approved"},{"id":"t43","empId":"e40","date":"5/12/2026","end":"5/14/2026","hours":24.0,"type":"Vacation","note":"5/12-5/14 24 hrs","status":"approved"},{"id":"t44","empId":"e51","date":"5/15/2026","end":"","hours":8.0,"type":"Vacation","note":"","status":"approved"},{"id":"t31","empId":"e37","date":"9/6/2025","end":"","hours":0.0,"type":"Vacation","note":"9/6- ?hrs","status":"approved"},{"id":"t40","empId":"e37","date":"1/16/2026","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t41","empId":"e37","date":"4/20/2026","end":"","hours":5.0,"type":"Vacation","note":"","status":"approved"},{"id":"t42","empId":"e37","date":"5/18/2026","end":"5/23/2026","hours":25.0,"type":"Vacation","note":"5/18-5/23 25 hrs","status":"approved"},{"id":"t_merc_jul","empId":"e55","date":"7/14/2026","end":"7/16/2026","hours":24,"type":"Vacation","note":"Off 7/14\u20137/16 (8h/day)","status":"approved"}],"hours":[{"id":"h1","empId":"e45","start":"1/19/2026","end":"2/1/2026","reg":80.0,"ot":0.0,"otUsed":0.0},{"id":"h2","empId":"e45","start":"2/2/2026","end":"2/15/2026","reg":80.0,"ot":3.0,"otUsed":0.0},{"id":"h3","empId":"e45","start":"2/16/2026","end":"3/1/2026","reg":80.0,"ot":2.5,"otUsed":0.0},{"id":"h4","empId":"e45","start":"3/2/2026","end":"3/15/2026","reg":80.0,"ot":0.0,"otUsed":0.0},{"id":"h5","empId":"e45","start":"3/16/2026","end":"3/29/2026","reg":77.5,"ot":0.0,"otUsed":0.0},{"id":"h6","empId":"e45","start":"3/30/2026","end":"4/12/2026","reg":54.0,"ot":0.0,"otUsed":0.0},{"id":"h7","empId":"e45","start":"4/13/2026","end":"4/26/2026","reg":79.5,"ot":0.0,"otUsed":0.0},{"id":"h8","empId":"e45","start":"4/27/2026","end":"5/10/2026","reg":79.5,"ot":0.0,"otUsed":0.0},{"id":"h9","empId":"e45","start":"5/11/2026","end":"5/24/2026","reg":70.0,"ot":0.0,"otUsed":0.0},{"id":"h10","empId":"e45","start":"5/25/2026","end":"6/7/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h11","empId":"e45","start":"6/8/2026","end":"6/21/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h12","empId":"e45","start":"6/22/2026","end":"7/5/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h13","empId":"e45","start":"7/6/2026","end":"7/19/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h14","empId":"e45","start":"7/20/2026","end":"8/2/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h15","empId":"e45","start":"8/3/2026","end":"8/16/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h16","empId":"e45","start":"8/17/2026","end":"8/30/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h17","empId":"e45","start":"8/31/2026","end":"9/13/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h18","empId":"e45","start":"9/14/2026","end":"9/27/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h19","empId":"e45","start":"9/28/2026","end":"10/11/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h20","empId":"e45","start":"10/12/2026","end":"10/25/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h21","empId":"e45","start":"10/26/2026","end":"11/8/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h22","empId":"e45","start":"11/9/2026","end":"11/22/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h23","empId":"e45","start":"11/23/2026","end":"12/6/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h24","empId":"e45","start":"12/7/2026","end":"12/20/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h25","empId":"e40","start":"1/19/2026","end":"2/1/2026","reg":80.0,"ot":3.25,"otUsed":0.0},{"id":"h26","empId":"e40","start":"2/2/2026","end":"2/15/2026","reg":80.0,"ot":6.5,"otUsed":0.0},{"id":"h27","empId":"e40","start":"2/16/2026","end":"3/1/2026","reg":80.0,"ot":11.5,"otUsed":0.0},{"id":"h28","empId":"e40","start":"3/2/2026","end":"3/15/2026","reg":80.0,"ot":7.5,"otUsed":0.0},{"id":"h29","empId":"e40","start":"3/16/2026","end":"3/29/2026","reg":76.75,"ot":0.0,"otUsed":3.25},{"id":"h30","empId":"e40","start":"3/30/2026","end":"4/12/2026","reg":77.5,"ot":0.0,"otUsed":3.0},{"id":"h31","empId":"e40","start":"4/13/2026","end":"4/26/2026","reg":79.25,"ot":0.0,"otUsed":0.75},{"id":"h32","empId":"e40","start":"4/27/2026","end":"5/10/2026","reg":80.0,"ot":2.0,"otUsed":0.0},{"id":"h33","empId":"e40","start":"5/11/2026","end":"5/24/2026","reg":50.25,"ot":0.0,"otUsed":5.75},{"id":"h34","empId":"e40","start":"5/25/2026","end":"6/7/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h35","empId":"e40","start":"6/8/2026","end":"6/21/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h36","empId":"e40","start":"6/22/2026","end":"7/5/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h37","empId":"e40","start":"7/6/2026","end":"7/19/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h38","empId":"e40","start":"7/20/2026","end":"8/2/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h39","empId":"e40","start":"8/3/2026","end":"8/16/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h40","empId":"e40","start":"8/17/2026","end":"8/30/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h41","empId":"e40","start":"8/31/2026","end":"9/13/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h42","empId":"e40","start":"9/14/2026","end":"9/27/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h43","empId":"e40","start":"9/28/2026","end":"10/11/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h44","empId":"e40","start":"10/12/2026","end":"10/25/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h45","empId":"e40","start":"10/26/2026","end":"11/8/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h46","empId":"e40","start":"11/9/2026","end":"11/22/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h47","empId":"e40","start":"11/23/2026","end":"12/6/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h48","empId":"e40","start":"12/7/2026","end":"12/20/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h49","empId":"e51","start":"1/19/2026","end":"2/1/2026","reg":80.0,"ot":5.5,"otUsed":0.0},{"id":"h50","empId":"e51","start":"2/2/2026","end":"2/15/2026","reg":80.0,"ot":4.25,"otUsed":0.0},{"id":"h51","empId":"e51","start":"2/16/2026","end":"3/1/2026","reg":80.0,"ot":6.5,"otUsed":0.0},{"id":"h52","empId":"e51","start":"3/2/2026","end":"3/15/2026","reg":78.0,"ot":0.0,"otUsed":0.0},{"id":"h53","empId":"e51","start":"3/16/2026","end":"3/29/2026","reg":73.5,"ot":0.0,"otUsed":6.5},{"id":"h54","empId":"e51","start":"3/30/2026","end":"4/12/2026","reg":80.0,"ot":0.5,"otUsed":0.0},{"id":"h55","empId":"e51","start":"4/13/2026","end":"4/26/2026","reg":80.0,"ot":5.5,"otUsed":0.0},{"id":"h56","empId":"e51","start":"4/27/2026","end":"5/10/2026","reg":80.0,"ot":2.75,"otUsed":0.0},{"id":"h57","empId":"e51","start":"5/11/2026","end":"5/24/2026","reg":76.75,"ot":0.0,"otUsed":3.25},{"id":"h58","empId":"e51","start":"5/25/2026","end":"6/7/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h59","empId":"e51","start":"6/8/2026","end":"6/21/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h60","empId":"e51","start":"6/22/2026","end":"7/5/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h61","empId":"e51","start":"7/6/2026","end":"7/19/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h62","empId":"e51","start":"7/20/2026","end":"8/2/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h63","empId":"e51","start":"8/3/2026","end":"8/16/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h64","empId":"e51","start":"8/17/2026","end":"8/30/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h65","empId":"e51","start":"8/31/2026","end":"9/13/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h66","empId":"e51","start":"9/14/2026","end":"9/27/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h67","empId":"e51","start":"9/28/2026","end":"10/11/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h68","empId":"e51","start":"10/12/2026","end":"10/25/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h69","empId":"e51","start":"10/26/2026","end":"11/8/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h70","empId":"e51","start":"11/9/2026","end":"11/22/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h71","empId":"e51","start":"11/23/2026","end":"12/6/2026","reg":0.0,"ot":0.0,"otUsed":0.0},{"id":"h72","empId":"e51","start":"12/7/2026","end":"12/20/2026","reg":0.0,"ot":0.0,"otUsed":0.0}],"timesheets":[],"clinic":{"name":"First Rehabilitation","addr1":"733 U.S. Highway One, Suite 2A","addr2":"North Palm Beach, FL 33408"},"roundMode":"up","adminEmail":"nick@firstrehabnpb.com","version":3,"announcements":[],"shirtRequests":[],"feedback":[]};
@@ -802,11 +802,13 @@ function normalizeDB(){
   DB.announcements = DB.announcements||[];
   DB.messages = DB.messages||[];
   DB.readmarks = DB.readmarks||[];
-  /* tombstones: explicit record deletions — anything missing WITHOUT one gets resurrected by the server */
-  DB.tombstones = (DB.tombstones||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,400);
+  /* tombstones: explicit record deletions — anything missing WITHOUT one gets resurrected by the server.
+     Keep them for 120 days (up to 1200) so no stale device outlives the marker and resurrects a deleted record. */
+  DB.tombstones = (DB.tombstones||[]).filter(t=>t&&(t.ts||0)>Date.now()-120*86400000)
+    .slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,1200);
   {
     const dead=new Set(DB.tombstones.map(t=>t.id));
-    if(dead.size) ["timeoff","hours","announcements","events","messages","media","shirtRequests","feedback","employees"]
+    if(dead.size) ["timeoff","hours","announcements","events","messages","media","shirtRequests","feedback","employees","timesheets"]
       .forEach(k=>{ if(Array.isArray(DB[k])) DB[k]=DB[k].filter(x=>!(x&&dead.has(x.id))); });
   }
   DB.shirtRequests = DB.shirtRequests||[];
@@ -878,6 +880,7 @@ function normalizeDB(){
       const k=(ts.empId||"")+"|"+(ts.start||"");
       const ex=byKey[k];
       if(!ex){ byKey[k]=ts; out.push(ts); return; }
+      if(ts.id) tomb(ts.id);   // the merged-away duplicate is DELETED for real — server honors the tombstone
       (ts.days||[]).forEach(d=>{
         let ed=(ex.days=ex.days||[]).find(x=>x&&x.date===d.date);
         if(!ed){ ex.days.push(d); return; }
@@ -887,7 +890,7 @@ function normalizeDB(){
           const seen=new Set((ed.segs||[]).map(key));
           (d.segs||[]).forEach(s=>{ if(!seen.has(key(s))) (ed.segs=ed.segs||[]).push(s); });
           ed.vac=Math.max(+ed.vac||0,+d.vac||0);
-          if(d.notes&&d.notes!==ed.notes) ed.notes=(ed.notes?ed.notes+" · ":"")+d.notes;
+          if(d.notes&&d.notes!==ed.notes&&!(ed.notes||"").includes(d.notes)) ed.notes=(ed.notes?ed.notes+" · ":"")+d.notes;
         }
       });
       ex.submitted=!!(ex.submitted||ts.submitted);
@@ -928,7 +931,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=30;   // client version (drives auto-update); the DB save-guard floor is a stable v7, not this
+const APP_VER=31;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -995,7 +998,11 @@ function mergeStates(base,local,remote){
         }
         else res.push(lv);                                                            // we edited it → ours
       }
-      else if(bm.has(id)){ if(!sameJSON(x,bm.get(id)) || k==="timesheets") res.push(x); }  // deletions stick — but hour sheets are NEVER dropped implicitly
+      else if(bm.has(id)){
+        const dead=((local.tombstones||[]).some(t=>t&&t.id===id))||((remote.tombstones||[]).some(t=>t&&t.id===id));
+        if(k==="timesheets"){ if(!dead) res.push(x); }                                // hour sheets only drop with an explicit tombstone
+        else if(!sameJSON(x,bm.get(id))) res.push(x);                                 // other deletions stick unless they edited it since
+      }
       else res.push(x);                                                               // they added it → keep
     });
     l.forEach(x=>{ const id=x&&x.id; if(id&&!rm.has(id)&&(!bm.has(id)||!sameJSON(x,bm.get(id)))) res.push(x); }); // anything we added or edited is never dropped
@@ -1029,12 +1036,14 @@ async function reconcileLocal(remote){
   }catch(e){}
   return remote;
 }
+/* cloudGet is a PURE READ. It must never advance the merge reference points (BASE /
+   _base / _syncrev) — doing so used to poison reconcileLocal at boot, making every
+   app-open re-impose that device's stale local copy over the cloud. Callers call
+   snapBase(remote) explicitly at the moment they ADOPT the remote copy. */
 async function cloudGet(){
   const {data,error}=await SB.from("app_state").select("data").eq("id",KEY).maybeSingle();
   if(error) throw error;
-  const rows=data && data.data ? data.data : null;
-  if(rows) snapBase(rows);
-  return rows;
+  return data && data.data ? data.data : null;
 }
 async function cloudSet(obj){
   for(let tries=0;tries<4;tries++){
@@ -1054,7 +1063,18 @@ async function cloudSet(obj){
         continue;
       }
     }
-    const {error}=await SB.from("app_state").upsert({id:KEY,data:obj,updated_at:new Date().toISOString()});
+    /* No reference copy on this device — NEVER blind-overwrite. Look first: if a row
+       already exists, adopt it as the merge base and retry as a conditional update. */
+    const {data:cur0,error:e3}=await SB.from("app_state").select("data").eq("id",KEY).maybeSingle();
+    if(e3) throw e3;
+    const existing=cur0&&cur0.data?cur0.data:null;
+    if(existing){
+      const merged=mergeStates(existing,obj,existing); merged._rev=Date.now(); merged._appver=APP_VER;
+      snapBase(existing); obj=merged; DB=merged;
+      try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e){}
+      continue;
+    }
+    const {error}=await SB.from("app_state").insert({id:KEY,data:obj,updated_at:new Date().toISOString()});
     if(error) throw error;
     snapBase(obj); return;
   }
@@ -1066,7 +1086,7 @@ async function load(){
     try{
       const remote=await cloudGet();
       CLOUD=true;
-      if(remote){ DB=remote; normalizeDB(); await save(true); return; }
+      if(remote){ DB=remote; snapBase(remote); normalizeDB(); await save(true); return; }
       let base=null; try{ const r=await LOCAL.get(KEY); if(r&&r.value) base=JSON.parse(r.value); }catch(e){}
       DB= base || JSON.parse(JSON.stringify(SEED)); normalizeDB(); await save(true); return;   // seed the cloud on first run
     }catch(e){ CLOUD=false; }
@@ -1083,10 +1103,10 @@ function typingNow(){
   return !!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
 }
 function reloadForUpdate(ver){
-  ver=String(ver||"srv");
+  ver=String(ver||"srv")+"@"+Math.floor(Date.now()/3600000);   // retry at most once per hour — a failed attempt never strands old code forever
   try{
     if(typingNow()){ showUpdatePill(); return; }
-    if(localStorage.getItem("_vtried")===ver){ showUpdatePill(); return; }   // already tried for this version — never loop
+    if(localStorage.getItem("_vtried")===ver){ showUpdatePill(); return; }
     localStorage.setItem("_vtried",ver);
     setTimeout(()=>location.reload(),400);
   }catch(e){}
@@ -1100,25 +1120,51 @@ function showUpdatePill(){
 }
 function isVersionError(e){ const m=(e&&(e.message||e.details||e.hint||""))+""; return /app_out_of_date/i.test(m); }
 function isBulkClearError(e){ const m=(e&&(e.message||e.details||e.hint||""))+""; return /bulk_clear_blocked/i.test(m); }
+let SAVING=false;   // background refreshes must never rewind DB/BASE while a save is in flight
 async function save(silent){
+  SAVING=true;
+  try{
+  const prevBase=BASE;   // the reference this save merges against (snapBase replaces, never mutates)
   DB._rev=Date.now(); DB._appver=APP_VER;
   const json=JSON.stringify(DB);
-  try{ await LOCAL.set(KEY,json); }catch(e){}
+  try{ await LOCAL.set(KEY,json); }
+  catch(e){ if(!window._quotaWarned){ window._quotaWarned=1; flash("⚠️ This device can't keep an offline copy (storage is full) — stay online so changes reach the cloud"); } }
   if(SB && CLOUD){ try{ await cloudSet(DB); }catch(e){
     if(isBulkClearError(e)){
-      /* The database safety net refused this save because it would have emptied
-         many timesheet days at once. Put the untouched cloud copy back so this
-         device matches everyone else — nothing was erased. */
-      flash("⛔ Blocked for safety: that change would have cleared several timesheet days at once. Nothing was erased.");
-      try{ const remote=await cloudGet(); if(remote){ DB=remote; normalizeDB(); try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e3){} render(); } }catch(e2){}
+      /* The database refused this save because it would have emptied many timesheet
+         days at once. Keep every OTHER edit in this save: merge with the cloud copy,
+         then take the cloud's version of just the mass-cleared days. */
+      flash("⛔ Blocked for safety: that change would have cleared several timesheet days at once. Those days were kept; everything else was saved.");
+      try{
+        const remote=await cloudGet();
+        if(remote){
+          let merged=prevBase?mergeStates(prevBase,DB,remote):remote;
+          (merged.timesheets||[]).forEach(t=>{
+            const rt=(remote.timesheets||[]).find(x=>x&&x.id===t.id); if(!rt) return;
+            t.days=(t.days||[]).map(d=>{
+              if(d&&d.cleared&&!(d.segs||[]).some(s=>s.in&&s.out)){
+                const rd=(rt.days||[]).find(x=>x&&x.date===d.date);
+                if(rd&&(rd.segs||[]).some(s=>s.in&&s.out)) return rd;   // un-clear: cloud's day wins
+              }
+              return d;
+            });
+          });
+          snapBase(remote); DB=merged; normalizeDB();
+          try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e3){}
+          render();
+          try{ DB._rev=Date.now(); DB._appver=APP_VER; await cloudSet(DB); }catch(e4){}   // one clean retry without the clears
+        }
+      }catch(e2){}
       updateCloudBadge(); return;
     }
     CLOUD=false; updateCloudBadge(); if(isVersionError(e)){ reloadForUpdate(); return; } if(!silent) flash("Couldn't reach the cloud — saved on this device, will sync when back online"); } }
   updateCloudBadge();
   if(!silent) flash(CLOUD?"Saved to the cloud ☁️":"Saved on this device");
+  } finally { SAVING=false; }
 }
 async function cloudRefresh(){
   if(!SB) return;
+  if(SAVING) return;                                                    // never rewind state while a save is mid-flight
   if($("#overlay") && $("#overlay").classList.contains("on")) return;   // don't interrupt an open form
   const ae=document.activeElement;
   if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;        // don't interrupt someone typing
@@ -1127,16 +1173,23 @@ async function cloudRefresh(){
     try{
       const prevBase=BASE;
       const remote=await cloudGet();
-      if(remote){ DB=prevBase?mergeStates(prevBase,DB,remote):await reconcileLocal(remote); normalizeDB(); CLOUD=true; await save(true); render(); }
+      if(remote){
+        const merged=prevBase?mergeStates(prevBase,DB,remote):await reconcileLocal(remote);
+        snapBase(remote); DB=merged; normalizeDB(); CLOUD=true; await save(true); render();
+      }
     }catch(e){}
     return;
   }
   try{
     const remote=await cloudGet();
-    /* ALWAYS adopt the fresh copy before anything else — cloudGet moved our merge
-       reference forward, so leaving DB stale here would make the next save clobber
-       other people's entries (the exact bug that ate timesheets). */
-    if(remote && remote._rev && remote._rev!==DB._rev){ DB=remote; normalizeDB(); render(); }
+    if(SAVING) return;                                                  // a save started while we were fetching — theirs wins
+    /* Adopt the fresh copy fully: memory, merge base, AND the offline copy — a stale
+       localStorage mirror is what used to clobber the cloud on the next app-open. */
+    if(remote && remote._rev && remote._rev!==DB._rev){
+      snapBase(remote); DB=remote; normalizeDB();
+      try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e){}
+      render();
+    }
     if(remote && remote._appver && remote._appver>APP_VER){ reloadForUpdate(remote._appver); }   // then pick up new code gently
   }catch(e){}
 }
@@ -1198,12 +1251,15 @@ async function installApp(){
 let PTR_Y=0, PTR_ON=false, PTR_BUSY=false;
 async function manualRefresh(){
   try{
-    if(SB&&AUTHED){
+    if(SB&&AUTHED&&!SAVING){
       const prevBase=BASE;
       const remote=await cloudGet();
-      if(remote){
-        if(!CLOUD&&prevBase){ DB=mergeStates(prevBase,DB,remote); CLOUD=true; await save(true); }
-        else { DB=remote; CLOUD=true; }
+      if(remote&&!SAVING){
+        if(!CLOUD){
+          const merged=prevBase?mergeStates(prevBase,DB,remote):await reconcileLocal(remote);
+          snapBase(remote); DB=merged; CLOUD=true; await save(true);
+        }
+        else { snapBase(remote); DB=remote; CLOUD=true; try{ await LOCAL.set(KEY,JSON.stringify(DB)); }catch(e){} }
         normalizeDB();
       }
     }
@@ -1436,6 +1492,7 @@ function pendingCount(){return DB.timeoff.filter(t=>t.status==="pending").length
 /* ================= ROOT ROUTER ================= */
 function render(){
   if(RECOVERY){ renderRecovery(); return; }
+  if(SESSION && !emp(SESSION)) SESSION=null;   // profile vanished (deleted/merged) → back to sign-in, never a frozen screen
   if(!SESSION){ renderLogin(); return; }
   const me=emp(SESSION);
   const admin=me.role==="admin";
@@ -1532,7 +1589,7 @@ function loginTab(which){
 }
 async function afterAuthEnter(){
   // pull the real (now-authorized) data and go in
-  try{ const rows=await cloudGet(); if(rows){ DB=await reconcileLocal(rows); normalizeDB(); await save(true); } CLOUD=true; LOCKED=false; }catch(e){}
+  try{ const rows=await cloudGet(); if(rows){ DB=await reconcileLocal(rows); snapBase(rows); normalizeDB(); await save(true); } CLOUD=true; LOCKED=false; }catch(e){}
   const me=empByEmail(AUTH_EMAIL);
   if(!me){ return {ok:false,msg:"That login isn't linked to a staff profile yet. Ask Nick to add your email to your profile."}; }
   if(!me.hasLogin){ me.hasLogin=true; try{ await save(true); }catch(e){} }   // persist enrollment so admin sees who's set up
@@ -2020,6 +2077,7 @@ function saveProfile(){
   me.name=name; me.first=name.split(" ")[0]; me.last=name.split(" ").slice(1).join(" ");
   me.email=$("#pf_email").value.trim(); me.phone=$("#pf_phone").value.trim(); me.bday=$("#pf_bday").value.trim();
   if(PF_PHOTO!==undefined) me.photo=PF_PHOTO||"";
+  me.eupd=Date.now();   // real edit stamp — lets intentional changes through the server's blank-field guard
   PF_PHOTO=undefined; save(); closeModal(); render(); flash("Details saved");
 }
 function delPhoto(id){ if(!confirm("Delete this photo?"))return; tomb(id); DB.media=DB.media.filter(x=>x.id!==id); save();render(); }
@@ -2836,6 +2894,7 @@ function clockIn(){
   const wasIn=daySummary(day);
   day.segs=day.segs||[];
   day.segs.push({in:hm,out:"",shift:(+hm.split(":")[0])<12?"am":"pm"});
+  delete day.cleared;   // the day has content again
   logEdit(ts,day.date,wasIn,daySummary(day));
   stampEdit(day);
   save(true);render();flash(`Checked in at ${ampm(hm)} ✓ Have a great shift!`);
@@ -2846,7 +2905,12 @@ function clockOut(){
   const open=day&&(day.segs||[]).find(s=>s.in&&!s.out);
   if(!open){flash("You're not checked in");return;}
   const hm=nowHM(), wasOut=daySummary(day);
-  if(hmToMin(hm)<=hmToMin(open.in)){ day.segs=day.segs.filter(s=>s!==open); logEdit(ts,day.date,wasOut,daySummary(day)); stampEdit(day); save(true); render(); flash("Check-in cancelled"); return; }
+  /* out <= in within 12h = accidental double-tap → cancel; a bigger gap means the
+     shift ran past midnight → close it (segHours already counts across midnight). */
+  if(hmToMin(hm)<=hmToMin(open.in) && (hmToMin(open.in)-hmToMin(hm))<720){
+    day.segs=day.segs.filter(s=>s!==open);
+    if(!(day.segs||[]).length) day.cleared=true;   // explicit — the server must not resurrect the phantom check-in
+    logEdit(ts,day.date,wasOut,daySummary(day)); stampEdit(day); save(true); render(); flash("Check-in cancelled"); return; }
   open.out=hm;
   logEdit(ts,day.date,wasOut,daySummary(day));
   stampEdit(day);
@@ -3232,7 +3296,7 @@ function openDay(empId,startStr,idx){
   try{
     const raw=sessionStorage.getItem("_dayDraft");
     if(raw){ const dr=JSON.parse(raw);
-      if(dr.key===`${empId}|${startStr}|${idx}` && Date.now()-(dr.ts||0)<43200000){
+      if(dr.key===`${empId}|${startStr}|${idx}` && Date.now()-(dr.ts||0)<7200000 && (!src.upd || (dr.ts||0)>src.upd)){
         Object.assign(st,dr.shift||{});
         if(dr.vac!=="") draftVac=parseFloat(dr.vac)||0;
         if(dr.notes) draftNotes=dr.notes;
@@ -3254,6 +3318,7 @@ function openDay(empId,startStr,idx){
       </div>
       <div class="round-hint" style="margin:6px 0 0">For weekend / random note or cleaning time — add “a” or “p” if needed (e.g. 8p).</div>
     </div>` : "";
+  const extraN=(src.segs||[]).filter(s=>s!==sh.am&&s!==sh.pm&&s!==sh.note).length;
   const prevIdx=(()=>{ for(let i=idx-1;i>=0;i--){ if((ts.days[i].segs||[]).some(s=>s.in&&s.out)) return i; } return -1; })();
   const prevLbl = prevIdx>=0 ? parseD(ts.days[prevIdx].date).toLocaleDateString("en-US",{weekday:"short"}) : "";
   const quickFill = `<div class="quickfill">${prevIdx>=0?`<button class="qf copy" onclick="copyPrevDay()">⧉ Same as ${prevLbl}</button>`:""}<button class="qf" onclick="presetDay()">Full day</button><button class="qf" onclick="presetAM('07:30','12:00')">Morning</button><button class="qf" onclick="presetPM('13:30','17:30')">Afternoon</button></div>`;
@@ -3275,6 +3340,7 @@ function openDay(empId,startStr,idx){
       </div>
     </div>
     ${noteBlock}
+    ${extraN?`<div class="round-hint">⏱ ${extraN} more time ${extraN===1?"entry":"entries"} on this day (e.g. from the punch clock) will be kept as-is when you save.</div>`:""}
     ${helper}
     <div class="field" style="margin:12px 0 0">
       <label style="display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;color:var(--ink)"><input type="checkbox" id="d_hol" ${draftHol?"checked":""} onchange="recalcDay()" style="width:17px;height:17px;accent-color:var(--gold)"> 🎆 Paid holiday — counts as a full 8 h day</label>
@@ -3286,7 +3352,7 @@ function openDay(empId,startStr,idx){
     </div>
     <div class="day-total-line"><span>Daily total</span><span id="dayTotalOut">0 h</span></div>
   </div>
-  <div class="foot"><button class="btn danger" style="margin-right:auto" onclick="clearDay()">Clear day</button><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveDay()">Save day</button></div>`);
+  <div class="foot"><button class="btn danger" style="margin-right:auto" onclick="clearDay()">Clear day</button><button class="btn ghost" onclick="cancelDay()">Cancel</button><button class="btn" onclick="saveDay()">Save day</button></div>`);
   recalcDay();
 }
 function onNote(id){
@@ -3340,11 +3406,18 @@ function shiftSegs(){
 function saveDayDraft(){ try{ const e=window._editDay; if(!e) return;
   sessionStorage.setItem("_dayDraft",JSON.stringify({key:`${e.empId}|${e.startStr}|${e.idx}`,shift:e.shift,vac:($("#d_vac")?$("#d_vac").value:""),notes:($("#d_notes")?$("#d_notes").value:""),hol:!!($("#d_hol")&&$("#d_hol").checked),ts:Date.now()})); }catch(err){} }
 function recalcDay(){ const vac=parseFloat($("#d_vac")?.value)||0; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const hol=$("#d_hol")&&$("#d_hol").checked?Math.max(0,8-worked):0; const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac+hol)+" h"+(hol?" (incl. "+round(hol)+"h holiday)":""); saveDayDraft(); }
-function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; const h=$("#d_hol"); if(h)h.checked=false; window._editDay.vac=0; saveDay(); }
+function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; const h=$("#d_hol"); if(h)h.checked=false; window._editDay.vac=0; window._editDay.clearAll=true; saveDay(); }
+function cancelDay(){ try{sessionStorage.removeItem("_dayDraft");}catch(e){} closeModal(); }   // Cancel really cancels — no zombie draft later
 function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const hol=!!($("#d_hol")&&$("#d_hol").checked); const segs=shiftSegs(); const ts=ensureTS(empId,startStr);
-  const day={date:ts.days[idx].date,segs,vac,notes};
+  /* The editor manages one Morning + one Afternoon + one Notes entry. Anything else on
+     the day — an open punch-clock check-in, a second same-shift entry — was never shown,
+     so it can't have been deliberately removed: carry it over untouched. */
+  const src=ts.days[idx]||{};
+  const managed=new Set([segsOf(src,"am")[0],segsOf(src,"pm")[0],segsOf(src,"note")[0]].filter(Boolean));
+  const extras=window._editDay.clearAll?[]:((src.segs||[]).filter(s=>!managed.has(s)));
+  const day={date:src.date,segs:[...segs,...extras],vac,notes};
   if(hol) day.hol=true;
-  if(!segs.length) day.cleared=true;   // an intentionally emptied day — tells the server this isn't accidental loss
+  if(!day.segs.length) day.cleared=true;   // an intentionally emptied day — tells the server this isn't accidental loss
   logEdit(ts,day.date,daySummary(ts.days[idx]),daySummary(day));
   stampEdit(day);
   ts.days[idx]=day;
@@ -3396,11 +3469,21 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
     let rows=null, gotData=false;
     try{ rows=await cloudGet(); CLOUD=true; gotData=true; }catch(e){ CLOUD=false; }
     if(gotData && rows){                          // data is readable (we're signed in)
-      DB=await reconcileLocal(rows); normalizeDB(); await save(true);
+      /* reconcileLocal FIRST (it reads the _base/_syncrev saved before this fetch),
+         THEN snapBase(rows) so the coming save merges against the real cloud copy. */
+      DB=await reconcileLocal(rows); snapBase(rows); normalizeDB(); await save(true);
       if(AUTHED){ const me=empByEmail(AUTH_EMAIL); if(me) SESSION=me.id; }
-    } else if(gotData && !rows){                  // cloud reachable but no record
-      if(AUTHED){                                 // signed in, empty cloud → seed it
-        DB=JSON.parse(JSON.stringify(SEED)); normalizeDB(); await save(true);
+    } else if(gotData && !rows){                  // cloud reachable but no record visible
+      if(AUTHED){
+        /* An empty read while signed in is almost always a blip, not a truly empty
+           cloud — re-check before even thinking about seeding over production. */
+        await new Promise(r=>setTimeout(r,900));
+        try{ rows=await cloudGet(); }catch(e){ rows=null; }
+        if(rows){ DB=await reconcileLocal(rows); snapBase(rows); normalizeDB(); await save(true); }
+        else{
+          let localCopy=null; try{ const r=await LOCAL.get(KEY); if(r&&r.value) localCopy=JSON.parse(r.value); }catch(e){}
+          DB=localCopy||JSON.parse(JSON.stringify(SEED)); normalizeDB(); await save(true);
+        }
         const me=empByEmail(AUTH_EMAIL); if(me) SESSION=me.id;
       } else {                                    // locked down + not signed in → must sign in first
         DB=JSON.parse(JSON.stringify(SEED)); normalizeDB();   // roster kept local only for the sign-in screen; real data loads after login
@@ -3408,6 +3491,7 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
       }
     } else {                                      // couldn't reach cloud → this-device fallback
       await load();
+      if(AUTHED){ const me=empByEmail(AUTH_EMAIL); if(me) SESSION=me.id; }   // offline must not lock out a signed-in user
     }
   } else {
     await load();                                 // no backend available → this-device fallback
