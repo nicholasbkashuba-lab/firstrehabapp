@@ -934,7 +934,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=33;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=34;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1409,7 +1409,9 @@ const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;
 let VIEW_AS_EMP=false;
 const emp=id=>{
   const e=DB.employees.find(x=>x.id===id);
-  if(e && VIEW_AS_EMP && id===SESSION) return Object.assign({},e,{role:"employee"});
+  /* preview as an HOURLY employee — the fullest employee experience, timesheet tab included
+     (salaried admins would otherwise preview the thinner salaried view and miss it) */
+  if(e && VIEW_AS_EMP && id===SESSION) return Object.assign({},e,{role:"employee",salaried:false});
   return e;
 };
 function startEmpView(){ VIEW_AS_EMP=true; TAB="me"; closeModal(); render(); window.scrollTo(0,0); flash("👁 Employee view on — this is exactly what your team sees"); }
@@ -1534,7 +1536,7 @@ function render(){
      ${admin?`<button class="bell" onclick="startEmpView()" title="Employee view — see the app exactly as your team sees it" aria-label="Employee view">👁</button>`:""}
      <button class="signout" onclick="signOut()">Sign out</button>
    </div></header>
-   ${VIEW_AS_EMP?`<div class="emp-view-bar">👁 <b>Employee view</b> — you're seeing exactly what your team sees. Admin tools are hidden.<button onclick="exitEmpView()">Exit</button></div>`:""}
+   ${VIEW_AS_EMP?`<div class="emp-view-bar">👁 <b>Employee view</b> — exactly what an hourly employee sees (timesheet included). Admin tools are hidden.<button onclick="exitEmpView()">Exit</button></div>`:""}
    ${notifBannerHTML()}
    <div class="tabbar"><nav class="tabs">${tabs.map(([id,l])=>`<button class="tab ${TAB===id?"active":""}" onclick="setTab('${id}')">${l}${id==="timeoff"&&pendingCount()?` · ${pendingCount()}`:""}${id==="inbox"&&inboxCount()?` · ${inboxCount()}`:""}${id==="chat"&&chatUnread()?` · ${chatUnread()}`:""}</button>`).join("")}</nav></div>
    <div class="wrap" id="view"></div>
