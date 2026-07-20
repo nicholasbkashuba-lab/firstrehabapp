@@ -1,13 +1,13 @@
 /* First Rehab Team Portal — service worker.
    Keeps the app installable and able to open offline, while ALWAYS preferring
    the network for the page itself so new deploys reach everyone immediately. */
-const CACHE = "firstrehab-v3";
+const CACHE = "firstrehab-v4";
 const PRECACHE = [
   "/",
+  "/supabase.js",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  "/icons/icon-512.png"
 ];
 
 self.addEventListener("install", (e) => {
