@@ -949,7 +949,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=45;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=46;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -3327,12 +3327,14 @@ function renderPayout(v){
     return;
   }
   const emps=DB.employees.filter(e=>e.active).sort((a,b)=>a.name.localeCompare(b.name));
-  let tGross=0,tFit=0,tSS=0,tMed=0,tDed=0,tNet=0,tER=0,tWorked=0,tPaidHrs=0;
+  const is1099=e=>String(e.payType||"").trim()==="1099";
+  let tGross=0,tFit=0,tSS=0,tMed=0,tDed=0,tNet=0,tER=0,tWorked=0,tRegHrs=0,t1099Hrs=0;
   const rows=emps.map(e=>{
     const r=RATES[e.id]||{rate:0,salary:0,fit:0,ss:0,med:0,ded:0,er:0};
     const ts=getTS(e.id,tsPeriod);
     const worked=tsWorked(ts,true), vac=tsVac(ts), hol=tsHol(ts,true);
-    tWorked+=worked; tPaidHrs+= r.salary>0 ? 0 : (e.salaried ? 80 : Math.min(worked,80)+vac+hol);   // matches the Pay hrs column
+    const paidH=r.salary>0 ? 0 : (e.salaried ? 80 : Math.min(worked,80)+vac+hol);   // matches the Pay hrs column
+    tWorked+=worked; if(is1099(e)) t1099Hrs+=paidH; else tRegHrs+=paidH;
     let gross=0, detail="", hrs="";
     if(r.salary>0){ gross=r.salary; detail="Salary"; hrs="—"; }
     else if(e.salaried){ gross=80*r.rate; detail="Salaried · 80 h/period"; hrs="80"; }
@@ -3347,7 +3349,7 @@ function renderPayout(v){
     const er=gross*(r.er||0);
     tGross+=gross; tFit+=fit; tSS+=ss; tMed+=med; tDed+=ded; tNet+=net; tER+=er;
     return `<tr>
-      <td style="min-width:170px"><b>${esc(e.name)}</b><div style="font-size:11.5px;color:var(--muted)">${detail}</div></td>
+      <td style="min-width:170px"><b>${esc(e.name)}</b> ${is1099(e)?'<span class="ft-tag" style="background:#efe7d6;color:#8a6a2f">1099</span>':'<span class="ft-tag" style="background:#e7eef0;color:#3d6472">Reg Hours</span>'}<div style="font-size:11.5px;color:var(--muted)">${detail}</div></td>
       <td class="num">${hrs}</td>
       <td class="num" style="white-space:nowrap">$<input class="allot-inp" style="width:${r.salary>0?"86":"64"}px" type="number" step="${r.salary>0?"1":"0.25"}" value="${r.salary>0?r.salary:r.rate}" onchange="setPayRate('${e.id}','${r.salary>0?"salary":"rate"}',this.value)"><span style="font-size:11px;color:var(--muted)">${r.salary>0?"/period":"/hr"}</span></td>
       <td class="num">${money(gross)}</td>
@@ -3363,7 +3365,8 @@ function renderPayout(v){
    <div class="section-title" style="margin-bottom:6px"><h2>Estimated payout</h2><span class="hint">🔒 Admins only</span></div>
    <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${payToggleHTML()}</div>
    <div class="stat-strip" style="margin:4px 0 16px">
-     <div class="stat"><div class="k">Pay hours · everyone</div><div class="v">${round(tPaidHrs)}<span class="u">hrs</span></div></div>
+     <div class="stat"><div class="k">Reg Hours · combined</div><div class="v">${round(tRegHrs)}<span class="u">hrs</span></div></div>
+     ${t1099Hrs?`<div class="stat"><div class="k">1099 hours</div><div class="v">${round(t1099Hrs)}<span class="u">hrs</span></div></div>`:""}
      <div class="stat alt"><div class="k">Hours worked · everyone</div><div class="v">${round(tWorked)}<span class="u">hrs</span></div></div>
      <div class="stat"><div class="k">Total gross · everyone</div><div class="v">${money(tGross)}</div></div>
      <div class="stat alt"><div class="k">Est. take-home · everyone</div><div class="v">${money(tNet)}</div></div>
@@ -3372,7 +3375,7 @@ function renderPayout(v){
    </div>
    <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th class="num">Pay hrs</th><th class="num">Rate</th><th class="num">Gross</th><th class="num">Fed tax</th><th class="num">Soc. Sec.</th><th class="num">Medicare</th><th class="num">Benefits/other</th><th class="num">Est. net</th><th class="num">ER taxes</th></tr></thead>
    <tbody>${rows}
-   <tr style="background:#fbf7ee;font-weight:700"><td>Everyone combined</td><td class="num">${round(tPaidHrs)} h</td><td></td>
+   <tr style="background:#fbf7ee;font-weight:700"><td>Everyone combined</td><td class="num" style="white-space:nowrap">${round(tRegHrs)} h Reg${t1099Hrs?`<div style="font-weight:600;font-size:12px">+ ${round(t1099Hrs)} h 1099</div>`:""}</td><td></td>
      <td class="num">${money(tGross)}</td><td class="num" style="color:var(--warn)">−${money(tFit)}</td><td class="num" style="color:var(--warn)">−${money(tSS)}</td><td class="num" style="color:var(--warn)">−${money(tMed)}</td><td class="num" style="color:var(--warn)">−${money(tDed)}</td>
      <td class="num" style="color:var(--ok)">${money(tNet)}</td><td class="num">${money(tER)}</td></tr>
    </tbody></table></div>
