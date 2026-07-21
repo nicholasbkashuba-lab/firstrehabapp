@@ -42,6 +42,8 @@
   .emp-view-bar{position:sticky;top:0;z-index:70;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;background:#4a2f7d;color:#fff;font-size:13px;padding:9px 14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.25)}
   .emp-view-bar b{color:#ffd98a}
   .emp-view-bar button{background:#ffd98a;color:#2b1a4d;border:0;border-radius:999px;padding:5px 16px;font-weight:800;font-size:12.5px;cursor:pointer;margin-left:6px}
+  .offline-bar{position:sticky;top:0;z-index:75;background:#a8322a;color:#fff;font-size:13.5px;line-height:1.45;padding:11px 16px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+  .offline-bar b{color:#ffe1a8}
   .preview-bar b{color:var(--cream)}
 
   /* ---------- LOGIN ---------- */
@@ -945,7 +947,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=36;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=37;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1139,11 +1141,17 @@ async function save(silent){
   SAVING=true;
   try{
   const prevBase=BASE;   // the reference this save merges against (snapBase replaces, never mutates)
+  /* device heartbeat: stamp my own record (max every 10 min) so admins can see
+     which devices are syncing and which have gone dark */
+  if(SB && CLOUD && SESSION){ const meR=DB.employees.find(e=>e.id===SESSION);
+    if(meR && Date.now()-(+meR.seen||0)>600000) meR.seen=Date.now(); }
   DB._rev=Date.now(); DB._appver=APP_VER;
   const json=JSON.stringify(DB);
   try{ await LOCAL.set(KEY,json); }
   catch(e){ if(!window._quotaWarned){ window._quotaWarned=1; flash("⚠️ This device can't keep an offline copy (storage is full) — stay online so changes reach the cloud"); } }
-  if(SB && CLOUD){ try{ await cloudSet(DB); }catch(e){
+  if(SB && CLOUD){ try{ await cloudSet(DB);
+    try{ if(localStorage.getItem("_offsince")){ localStorage.removeItem("_offsince"); flash("✓ Back online — everything entered on this device has synced to the team"); } }catch(e0){}
+  }catch(e){
     if(isBulkClearError(e)){
       /* The database refused this save because it would have emptied many timesheet
          days at once. Keep every OTHER edit in this save: merge with the cloud copy,
@@ -1171,7 +1179,9 @@ async function save(silent){
       }catch(e2){}
       updateCloudBadge(); return;
     }
-    CLOUD=false; updateCloudBadge(); if(isVersionError(e)){ reloadForUpdate(); return; } if(!silent) flash("Couldn't reach the cloud — saved on this device, will sync when back online"); } }
+    CLOUD=false; updateCloudBadge(); if(isVersionError(e)){ reloadForUpdate(); return; }
+    try{ if(!localStorage.getItem("_offsince")) localStorage.setItem("_offsince",String(Date.now())); }catch(e5){}   // start the "you're offline" clock
+    if(!silent) flash("Couldn't reach the cloud — saved on this device, will sync when back online"); } }
   updateCloudBadge();
   if(!silent) flash(CLOUD?"Saved to the cloud ☁️":"Saved on this device");
   } finally { SAVING=false; }
@@ -1548,6 +1558,9 @@ function render(){
      <button class="signout" onclick="signOut()">Sign out</button>
    </div></header>
    ${VIEW_AS_EMP?`<div class="emp-view-bar">👁 <b>Employee view</b> — exactly what an hourly employee sees (timesheet included). Admin tools are hidden.<button onclick="exitEmpView()">Exit</button></div>`:""}
+   ${(()=>{ try{ const os=+localStorage.getItem("_offsince")||0;
+      if(!CLOUD && os && Date.now()-os>1800000) return `<div class="offline-bar">⚠️ <b>Your entries are NOT reaching the shared system</b> — they're safe on this device, but nobody else can see them (since ${new Date(os).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}). Keep the app open on Wi-Fi. If this message won't go away, tell Nick right away.</div>`;
+    }catch(e){} return ""; })()}
    ${notifBannerHTML()}
    <div class="tabbar"><nav class="tabs">${tabs.map(([id,l])=>`<button class="tab ${TAB===id?"active":""}" onclick="setTab('${id}')">${l}${id==="timeoff"&&pendingCount()?` · ${pendingCount()}`:""}${id==="inbox"&&inboxCount()?` · ${inboxCount()}`:""}${id==="chat"&&chatUnread()?` · ${chatUnread()}`:""}</button>`).join("")}</nav></div>
    <div class="wrap" id="view"></div>
@@ -1902,6 +1915,21 @@ function openMoreNav(){
 }
 
 /* ================= ADMIN VIEWS ================= */
+/* Sync monitor: surfaces any device that hasn't reported to the shared system in 2+ days,
+   so a silently-offline phone gets noticed in a day — not after payroll. */
+function syncMonitorHTML(){
+  const now=Date.now();
+  const tracked=DB.employees.filter(e=>e.active&&e.hasLogin&&e.seen);
+  if(!tracked.length) return "";
+  const stale=tracked.filter(e=>now-(+e.seen)>172800000).sort((a,b)=>(+a.seen)-(+b.seen));
+  if(!stale.length) return "";
+  const agoD=t=>{const d=Math.floor((now-t)/86400000); return d<1?"today":d===1?"1 day ago":d+" days ago";};
+  return `<div class="card" style="margin-top:14px;border-left:4px solid var(--warn)">
+    <b>📡 Sync check — ${stale.length} device${stale.length===1?"":"s"} not reporting in</b>
+    <div style="font-size:13px;color:var(--muted);margin:4px 0 8px">Anything these people type stays stuck on their phone until they open the app with internet. Ask them to open it once.</div>
+    ${stale.map(e=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><b>${esc(e.name)}</b><span style="color:var(--warn);font-weight:700">last synced ${agoD(+e.seen)}</span></div>`).join("")}
+  </div>`;
+}
 function viewAdminDash(v){
   const me=emp(SESSION);
   const active=DB.employees.filter(e=>e.active).sort((a,b)=>a.name.localeCompare(b.name));
@@ -1917,6 +1945,7 @@ function viewAdminDash(v){
      <div class="stat alt"><div class="k">Used ${YEAR}</div><div class="v">${round(ptoUsedTot)}<span class="u">hrs</span></div></div>
      <div class="stat"><div class="k">Pending Requests</div><div class="v">${pend}</div></div>
    </div>
+   ${syncMonitorHTML()}
    ${me.getsPto?`<div class="card" style="margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-left:4px solid var(--gold)">
      <div style="flex:1;min-width:180px"><b>Your time off · ${YEAR}</b><div style="color:var(--muted);font-size:13px;margin-top:2px"><b>${round(allowedVac(me.id))} h</b> available · ${round(ptoUsed(me.id,YEAR))} used · <b style="color:var(--ok)">${round(allowedVac(me.id)-ptoUsed(me.id,YEAR))} h left</b>${bankOT(me.id,YEAR)?` · incl. ${round(bankOT(me.id,YEAR))} h banked OT`:""}</div></div>
      <button class="btn sm" onclick="setTab('mytime')">My time off ›</button></div>`:""}
@@ -2499,7 +2528,7 @@ function viewEmployees(v){
    ${emps.map(e=>`<tr>
       <td><b>${esc(e.name)}</b></td>
       <td style="color:var(--muted);font-size:13px">${esc(e.email||"—")}</td>
-      <td>${e.status==="FT"?'<span class="ft-tag">FT</span>':'<span class="ft-tag pt-tag">PT</span>'} <span style="color:var(--muted);font-size:12px">${esc(e.payType)}</span>${e.salaried?' <span class="ft-tag" style="background:#efe7d6;color:#8a6a2f">salaried</span>':''}</td>
+      <td>${e.status==="FT"?'<span class="ft-tag">FT</span>':'<span class="ft-tag pt-tag">PT</span>'} <span style="color:var(--muted);font-size:12px">${esc(e.payType)}</span>${e.salaried?' <span class="ft-tag" style="background:#efe7d6;color:#8a6a2f">salaried</span>':''}${e.seen?`<div style="font-size:11px;color:${Date.now()-(+e.seen)>172800000?'var(--warn)':'var(--muted)'}">📡 synced ${agoStr(+e.seen)}</div>`:''}</td>
       <td>${e.getsPto?`<span class="st-pill st-approved">${round(e.vacAllot)} h</span>`:'<span class="nopto-tag">No balance</span>'}</td>
       <td class="num">${e.getsPto?round(ptoUsed(e.id,YEAR))+" h":"—"}</td>
       <td>${e.role==="admin"?'<span class="st-pill st-approved">Admin</span>':'<span style="color:var(--muted);font-size:12px">Employee</span>'}</td>
