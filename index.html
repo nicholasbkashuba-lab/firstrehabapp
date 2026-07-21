@@ -949,7 +949,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=46;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=47;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -3176,6 +3176,7 @@ function renderTimesheet(v, empId, isAdmin){
      <div class="tm"><div class="tm-k">🌤️ Afternoon</div><div class="tm-v">${round(pm)}<small>h</small></div></div>
      ${note>0?`<div class="tm"><div class="tm-k">📝 Notes</div><div class="tm-v">${round(note)}<small>h</small></div></div>`:""}
      ${ot>0?`<div class="tm ot"><div class="tm-k">🌴 Overtime</div><div class="tm-v">${round(ot)}<small>h</small></div><div class="tm-sub">${getsPTO(empId)?(ts.approvedBy?"banked":"→ banked on approve"):"over 80/period"}</div></div>`:""}
+     ${me&&me.getsPto?(()=>{const al=allowedVac(empId),us=ptoUsed(empId,YEAR),lf=al-us;return `<div class="tm"><div class="tm-k">🏖 Time off left</div><div class="tm-v" style="${lf<0?"color:var(--warn)":""}">${round(lf)}<small>h</small></div><div class="tm-sub">of ${round(al)} h this year · ${round(us)} h used</div></div>`;})():""}
    </div>`;
   v.innerHTML=`
    <div class="section-title" style="margin-bottom:8px">
