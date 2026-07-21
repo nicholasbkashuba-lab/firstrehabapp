@@ -949,7 +949,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=40;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=41;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -3187,6 +3187,7 @@ function renderTimesheet(v, empId, isAdmin){
      <div class="grow"></div>
      ${isAdmin?roundSel():""}
      ${isAdmin&&findTS(empId,startStr)&&(findTS(empId,startStr).log||[]).length?`<button class="btn ghost" onclick="showTSLog('${empId}','${startStr}')">✎ Edits</button>`:""}
+     <button class="btn ghost" onclick="openVacQuick('${empId}','${startStr}')">🌴 Vacation</button>
      <button class="btn ghost" onclick="printTimesheet('${empId}','${startStr}')">🖨 Print</button>
      ${isAdmin
        ? (ts.approvedBy?`<button class="btn ghost" onclick="unapproveTS('${empId}','${startStr}')">Un-approve</button>`:`<button class="btn" onclick="approveTS('${empId}','${startStr}')">Approve</button>`)
@@ -3431,6 +3432,32 @@ function renderAdminDetail(v){
   v.innerHTML = `<button class="btn ghost sm" onclick="backToRoster()">‹ All timesheets</button>` + holder.innerHTML;
 }
 
+/* One-tap vacation on the timesheet: pick the day, type the hours — it lands on the
+   day (🌴 chip), pays through payroll, and counts toward the time-off balance. */
+function openVacQuick(empId,startStr){
+  const ts=getTS(empId,parseD(startStr));
+  const todayStr=fmtD(new Date());
+  const defIdx=Math.max(0,ts.days.findIndex(d=>d.date===todayStr));
+  openModal(`<h3>🌴 Add vacation time</h3><div class="body">
+    <p class="sub" style="margin-top:0">Goes on the timesheet day, gets paid, and counts toward the time-off balance — all automatically.</p>
+    <div class="row2">
+      <div class="field"><label>Day</label><select class="inp" id="vq_day">${ts.days.map((d,i)=>`<option value="${i}" ${i===defIdx?"selected":""}>${parseD(d.date).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${(+d.vac||0)?` · has ${round(d.vac)} h`:""}</option>`).join("")}</select></div>
+      <div class="field"><label>Vacation hours</label><input class="inp" id="vq_hrs" type="number" step="0.25" min="0.25" max="12" value="8"></div>
+    </div>
+    <div class="round-hint">A full day is 8 hours — change it for a half day (4) or any other amount.</div>
+  </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveVacQuick('${empId}','${startStr}')">Add vacation</button></div>`);
+  setTimeout(()=>{ const h=$("#vq_hrs"); if(h){ h.focus(); h.select(); } },60);
+}
+function saveVacQuick(empId,startStr){
+  const i=+($("#vq_day")?$("#vq_day").value:0)||0, hrs=parseFloat($("#vq_hrs")?$("#vq_hrs").value:0)||0;
+  if(hrs<=0){ flash("Enter the vacation hours first"); return; }
+  const ts=ensureTS(empId,startStr); const d=ts.days[i]; if(!d) return;
+  const was=daySummary(d);
+  d.vac=hrs; delete d.cleared;
+  logEdit(ts,d.date,was,daySummary(d)); stampEdit(d);
+  save(); closeModal(); render();
+  flash(`🌴 ${round(hrs)} h vacation on ${parseD(d.date).toLocaleDateString("en-US",{weekday:"short"})} — counted toward the time-off balance`);
+}
 function submitTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; save();render();flash("Timesheet submitted");
   if(empId===SESSION) sendPushNotify({kind:"timeoff",title:"🕒 Timesheet submitted",body:`${emp(empId).name} submitted their timesheet for ${startStr}`,url:"/"}); }
 function unsubmitTS(empId,startStr){ const ts=findTS(empId,startStr); if(ts){ts.submitted=false;ts.approvedBy="";save();render();} }
@@ -3519,7 +3546,7 @@ function openDay(empId,startStr,idx){
   const extraN=(src.segs||[]).filter(s=>s!==sh.am&&s!==sh.pm&&s!==sh.note).length;
   const prevIdx=(()=>{ for(let i=idx-1;i>=0;i--){ if((ts.days[i].segs||[]).some(s=>s.in&&s.out)) return i; } return -1; })();
   const prevLbl = prevIdx>=0 ? parseD(ts.days[prevIdx].date).toLocaleDateString("en-US",{weekday:"short"}) : "";
-  const quickFill = `<div class="quickfill">${prevIdx>=0?`<button class="qf copy" onclick="copyPrevDay()">⧉ Same as ${prevLbl}</button>`:""}<button class="qf" onclick="presetDay()">Full day</button><button class="qf" onclick="presetAM('07:30','12:00')">Morning</button><button class="qf" onclick="presetPM('13:30','17:30')">Afternoon</button></div>`;
+  const quickFill = `<div class="quickfill">${prevIdx>=0?`<button class="qf copy" onclick="copyPrevDay()">⧉ Same as ${prevLbl}</button>`:""}<button class="qf" onclick="presetDay()">Full day</button><button class="qf" onclick="presetAM('07:30','12:00')">Morning</button><button class="qf" onclick="presetPM('13:30','17:30')">Afternoon</button><button class="qf" onclick="presetVac()">🌴 Vacation</button></div>`;
   openModal(`<h3>${dt.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</h3><div class="body" id="dayBody">
     ${restored?`<div class="sec-status ok">✔ We saved what you were typing — it's all still here. Tap "Save day" to keep it.</div>`:""}
     ${quickFill}
@@ -3570,6 +3597,7 @@ function setSeg(inId,outId,inKey,outKey,inHM,outHM){
 function presetAM(a,b){ setSeg("m_in","m_out","mIn","mOut",a,b); }
 function presetPM(a,b){ setSeg("a_in","a_out","aIn","aOut",a,b); }
 function presetDay(){ presetAM("07:30","12:00"); presetPM("13:30","17:30"); }
+function presetVac(){ const v=$("#d_vac"); if(v){ if(!v.value) v.value=8; v.focus(); v.select(); recalcDay(); } }
 function copyPrevDay(){
   const {empId,startStr,idx}=window._editDay; const ts=getTS(empId,parseD(startStr));
   let src=null; for(let i=idx-1;i>=0;i--){ if((ts.days[i].segs||[]).some(s=>s.in&&s.out)){src=ts.days[i];break;} }
