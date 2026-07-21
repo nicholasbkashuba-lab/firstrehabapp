@@ -949,7 +949,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=44;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=45;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -3391,13 +3391,14 @@ function clearPeriodTS(){
   save(); render(); flash(`Cleared timesheets for this period${list.length?` (${list.length})`:""}`);
 }
 function renderAdminRoster(v){
-  const emps=DB.employees.filter(e=>e.active && !e.salaried).sort((a,b)=>a.name.localeCompare(b.name));
+  const byLast=(x,y)=>((x.last||x.name.split(" ").slice(-1)[0])+" "+x.name).localeCompare((y.last||y.name.split(" ").slice(-1)[0])+" "+y.name);
+  const emps=DB.employees.filter(e=>e.active && !e.salaried).sort(byLast);
   const rows=emps.map(e=>{const ts=getTS(e.id,tsPeriod); const started=tsHasEntries(ts);
     const st=ts.approvedBy?"approved":ts.submitted?"submitted":started?"inprogress":"notstarted";
     return {e,ts,st,started,total:tsTotal(ts,true)};});
   const needs=rows.filter(r=>r.st==="submitted");
   const completed=rows.filter(r=>r.st==="approved");
-  const done=[...needs,...completed].sort((a,b)=>a.e.name.localeCompare(b.e.name));   // finished sheets, A→Z
+  const done=[...needs,...completed].sort((a,b)=>byLast(a.e,b.e));   // finished sheets, by last name
   const inprog=rows.filter(r=>r.st==="inprogress");
   const notstart=rows.filter(r=>r.st==="notstarted");
   const nInProg=inprog.length, nNot=notstart.length;
