@@ -12,6 +12,8 @@
 <meta name="description" content="First Rehabilitation team portal — timesheets, PTO, calendar, and announcements.">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -947,7 +949,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=38;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=39;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1635,6 +1637,7 @@ async function afterAuthEnter(){
   if(!me){ return {ok:false,msg:"That login isn't linked to a staff profile yet. Ask Nick to add your email to your profile."}; }
   if(!me.hasLogin){ me.hasLogin=true; try{ await save(true); }catch(e){} }   // persist enrollment so admin sees who's set up
   SESSION=me.id; TAB=""; const ys=allYears(); YEAR=ys.includes(2026)?2026:ys[0]; calMonth=new Date(YEAR,0,1);
+  tsPeriod = me.role==="admin" ? defaultAdminPeriod() : periodStartFor(new Date());
   setTimeout(maybeAskPush,900);
   return {ok:true};
 }
@@ -2995,6 +2998,14 @@ let ROUND_MODE = (DB && DB.roundMode) || "nearest";     // 'up' | 'nearest' | 'o
 const CLINIC = (DB && DB.clinic) || {name:"First Rehabilitation",addr1:"733 U.S. Highway One, Suite 2A",addr2:"North Palm Beach, FL 33408"};
 const ANCHOR = new Date(2026,5,22);                 // Mon Jun 22, 2026 → period runs to Sun Jul 5; next cycle starts Mon Jul 6; rolls every other Monday
 let tsPeriod = periodStartFor(new Date());          // current period start (Date)
+/* Payroll-week default for admins: on the Monday and Tuesday right after a period
+   closes (payroll days), the Timesheets/Payout views open on the JUST-FINISHED
+   period — the one being paid — instead of the brand-new, mostly-empty one. */
+function defaultAdminPeriod(){
+  const cur=periodStartFor(new Date());
+  const dayIn=Math.floor((Date.now()-cur.getTime())/86400000);
+  return dayIn<2 ? new Date(cur.getTime()-14*86400000) : cur;
+}
 let tsAdminEmp = null;                              // admin: which employee's sheet
 let tsDetailEmp = null;                             // admin: open a single sheet (null = roster list)
 
@@ -3645,7 +3656,7 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
     await load();                                 // no backend available → this-device fallback
   }
   ROUND_MODE = DB.roundMode || "nearest";
-  tsPeriod = periodStartFor(new Date());
+  tsPeriod = (SESSION && emp(SESSION) && DB.employees.find(e=>e.id===SESSION && e.role==="admin")) ? defaultAdminPeriod() : periodStartFor(new Date());
   const withTS = DB.timesheets && DB.timesheets[0];
   tsAdminEmp = withTS ? withTS.empId : null;
   render();
