@@ -947,7 +947,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=37;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=38;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -3655,6 +3655,23 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) cloudRefresh(); });
     window.addEventListener("focus", cloudRefresh);
   }
+  /* Zombie-session self-heal: a phone that RESUMES a broken session (no database
+     connection) instead of relaunching would otherwise stay silently offline forever —
+     that's how two weeks of hours once sat stranded on phones. On every resume: if the
+     connector is missing, relaunch immediately; if we've been unable to sync for 2+
+     hours, relaunch at most once per hour (never while someone is mid-typing — and the
+     day editor's draft protection keeps anything being typed safe regardless). */
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden) return;
+    try{
+      if(!SB && navigator.onLine!==false){ location.reload(); return; }
+      const os=+localStorage.getItem("_offsince")||0;
+      if(!CLOUD && os && Date.now()-os>7200000 && !typingNow()){
+        const k="_zombietry", last=+localStorage.getItem(k)||0;
+        if(Date.now()-last>3600000){ localStorage.setItem(k,String(Date.now())); location.reload(); }
+      }
+    }catch(e){}
+  });
 })();
 </script>
 </body>
