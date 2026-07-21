@@ -949,7 +949,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=41;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=42;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -3327,11 +3327,12 @@ function renderPayout(v){
     return;
   }
   const emps=DB.employees.filter(e=>e.active).sort((a,b)=>a.name.localeCompare(b.name));
-  let tGross=0,tFit=0,tSS=0,tMed=0,tDed=0,tNet=0,tER=0;
+  let tGross=0,tFit=0,tSS=0,tMed=0,tDed=0,tNet=0,tER=0,tWorked=0,tPaidHrs=0;
   const rows=emps.map(e=>{
     const r=RATES[e.id]||{rate:0,salary:0,fit:0,ss:0,med:0,ded:0,er:0};
     const ts=getTS(e.id,tsPeriod);
     const worked=tsWorked(ts,true), vac=tsVac(ts), hol=tsHol(ts,true);
+    tWorked+=worked; tPaidHrs+=(e.salaried||r.salary>0)?0:Math.min(worked,80)+vac+hol;
     let gross=0, detail="", hrs="";
     if(r.salary>0){ gross=r.salary; detail="Salary"; hrs="—"; }
     else if(e.salaried){ gross=80*r.rate; detail="Salaried · 80 h/period"; hrs="80"; }
@@ -3362,6 +3363,7 @@ function renderPayout(v){
    <div class="section-title" style="margin-bottom:6px"><h2>Estimated payout</h2><span class="hint">🔒 Admins only</span></div>
    <div class="ts-toolbar">${periodNav()}<div class="grow"></div>${payToggleHTML()}</div>
    <div class="stat-strip" style="margin:4px 0 16px">
+     <div class="stat"><div class="k">Hours worked · everyone</div><div class="v">${round(tWorked)}<span class="u">hrs</span></div></div>
      <div class="stat"><div class="k">Total gross · everyone</div><div class="v">${money(tGross)}</div></div>
      <div class="stat alt"><div class="k">Est. take-home · everyone</div><div class="v">${money(tNet)}</div></div>
      <div class="stat alt"><div class="k">Employer taxes</div><div class="v">${money(tER)}</div></div>
