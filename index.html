@@ -352,6 +352,10 @@
   table.paytbl tfoot td{background:#fbf7ee;font-weight:700;border-top:2px solid var(--line)}
   .mini-hint{font-size:12.5px;color:var(--muted);margin-top:10px}
   .card.announce{border-left:4px solid var(--coral)}
+  .react-bar{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .react-btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;font-size:14px;cursor:pointer;line-height:1.3}
+  .react-btn b{font-size:12px;color:var(--teal)}
+  .react-btn.on{background:#e7f4ec;border-color:var(--ok)}
   .card.announce.feed-event{border-left-color:var(--teal)}
   .card.announce.feed-bday{border-left-color:var(--gold);background:linear-gradient(180deg,#fffdf5,#fff)}
   .feed-ic{margin-right:2px}
@@ -949,7 +953,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=47;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=48;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1012,6 +1016,14 @@ function mergeStates(base,local,remote){
         else if(k==="employees"&&bv&&x&&lv){                                          // both may have touched this person → merge FIELD by field
           const out=Object.assign({},x);
           new Set([...Object.keys(lv),...Object.keys(x)]).forEach(f=>{ if(!sameJSON(lv[f],bv[f])) out[f]=lv[f]; });
+          res.push(out);
+        }
+        else if(k==="announcements"&&x&&lv){                                          // reactions merge PER PERSON — simultaneous reacts never clobber each other
+          const bv2=bv||{}, out=Object.assign({},x);
+          new Set([...Object.keys(lv),...Object.keys(x)]).forEach(f=>{ if(f==="reacts") return; if(!sameJSON(lv[f],bv2[f])) out[f]=lv[f]; });
+          const br=bv2.reacts||{}, lr=lv.reacts||{}, m=Object.assign({},x.reacts||{});
+          new Set([...Object.keys(lr),...Object.keys(br)]).forEach(p=>{ if(!sameJSON(lr[p],br[p])){ if(lr[p]===undefined) delete m[p]; else m[p]=lr[p]; } });
+          if(Object.keys(m).length) out.reacts=m; else delete out.reacts;
           res.push(out);
         }
         else res.push(lv);                                                            // we edited it → ours
@@ -2026,7 +2038,25 @@ function feedCard(it,admin){
        ${actions}
      </div>
      ${it.body?`<div style="margin-top:7px;white-space:pre-wrap">${esc(it.body)}</div>`:""}
+     ${it.kind==="ann"?annReactBar(it.id):""}
    </div>`;
+}
+/* Emoji reactions on announcements — one per person, tap again to remove. */
+const ANN_EMOJI=["👍","❤️","🎉","🙏","😂"];
+function annReactBar(id){
+  const a=(DB.announcements||[]).find(x=>x.id===id); if(!a) return "";
+  const re=a.reacts||{}, mine=re[SESSION];
+  const who={}; Object.keys(re).forEach(p=>{ (who[re[p]]=who[re[p]]||[]).push(empName(p)); });
+  return `<div class="react-bar">`+ANN_EMOJI.map(e=>{
+    const names=who[e]||[];
+    return `<button class="react-btn ${mine===e?'on':''}" title="${esc(names.join(", "))}" onclick="reactAnn('${id}','${e}')">${e}${names.length?` <b>${names.length}</b>`:""}</button>`;
+  }).join("")+`</div>`;
+}
+function reactAnn(id,emo){
+  const a=(DB.announcements||[]).find(x=>x.id===id); if(!a) return;
+  a.reacts=a.reacts||{};
+  if(a.reacts[SESSION]===emo) delete a.reacts[SESSION]; else a.reacts[SESSION]=emo;
+  save(); render();
 }
 function announceListHTML(admin){
   const all=feedItems();
