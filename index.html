@@ -953,7 +953,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=48;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=49;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -1203,9 +1203,11 @@ async function save(silent){
 async function cloudRefresh(){
   if(!SB) return;
   if(SAVING) return;                                                    // never rewind state while a save is mid-flight
-  if($("#overlay") && $("#overlay").classList.contains("on")) return;   // don't interrupt an open form
   const ae=document.activeElement;
-  if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;        // don't interrupt someone typing
+  const busy=($("#overlay") && $("#overlay").classList.contains("on"))  // an open form, or
+    || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));            // a focused field — don't interrupt
+  const idle=Date.now()-(window._lastAct||0)>90000;                     // …unless nobody has actually typed/tapped in 90s
+  if(busy && !(!CLOUD && idle)) return;           // out-of-sync + idle → reconnect anyway (a field left focused must never strand a device)
   if(!CLOUD){                                     // connection dropped earlier — quietly reconnect and fold local edits back in
     if(!AUTHED) return;
     try{
@@ -1229,6 +1231,10 @@ async function cloudRefresh(){
       render();
     }
     if(remote && remote._appver && remote._appver>APP_VER){ reloadForUpdate(remote._appver); }   // then pick up new code gently
+    /* viewer heartbeat: simply having the app open counts as "reporting in" (hourly),
+       so the admin sync monitor only flags devices that truly haven't connected */
+    if(AUTHED && SESSION){ const meR=DB.employees.find(e=>e.id===SESSION);
+      if(meR && Date.now()-(+meR.seen||0)>3600000){ meR.seen=Date.now(); await save(true); } }
   }catch(e){}
 }
 function updateCloudBadge(){
@@ -3770,7 +3776,12 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
     setInterval(cloudRefresh, 15000);
     document.addEventListener("visibilitychange",()=>{ if(!document.hidden) cloudRefresh(); });
     window.addEventListener("focus", cloudRefresh);
+    window.addEventListener("online", cloudRefresh);          // the moment internet returns, sync — don't wait for the timer
   }
+  /* real-interaction clock — lets the refresher tell "someone is typing" apart from
+     "a field was left focused on a table an hour ago" */
+  window._lastAct=Date.now();
+  ["keydown","pointerdown","touchstart"].forEach(ev=>document.addEventListener(ev,()=>{ window._lastAct=Date.now(); },{passive:true}));
   /* Zombie-session self-heal: a phone that RESUMES a broken session (no database
      connection) instead of relaunching would otherwise stay silently offline forever —
      that's how two weeks of hours once sat stranded on phones. On every resume: if the
@@ -3782,7 +3793,8 @@ function closePrint(){ $("#printOverlay").classList.remove("on"); }
     try{
       if(!SB && navigator.onLine!==false){ location.reload(); return; }
       const os=+localStorage.getItem("_offsince")||0;
-      if(!CLOUD && os && Date.now()-os>7200000 && !typingNow()){
+      const lim=navigator.onLine!==false?1800000:7200000;   // phone clearly HAS internet → heal after 30 min, not 2 h
+      if(!CLOUD && os && Date.now()-os>lim && !typingNow()){
         const k="_zombietry", last=+localStorage.getItem(k)||0;
         if(Date.now()-last>3600000){ localStorage.setItem(k,String(Date.now())); location.reload(); }
       }
