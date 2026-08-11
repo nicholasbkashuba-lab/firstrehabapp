@@ -1115,6 +1115,7 @@ function decide(id, decision, card){
 
 function loadPending(){
   return call("/api/pending").then(function(r){
+    if(r.sso) return;   // ssoBlocked() has already said its piece
     if(r.status === 401 || r.status === 403){ needAuth(); return; }
     if(!r.ok) return;
     var list = Array.isArray(r.data) ? r.data : asArray(pick(r.data || {}, "pending","approvals","queue","items"));
