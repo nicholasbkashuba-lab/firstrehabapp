@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>JARVIS</title>
+<meta name="theme-color" content="#04121a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<meta name="description" content="Voice HUD assistant.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2304121a'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%2340d6ff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23bff0ff'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#04121a; --bg-2:#071c26; --panel:rgba(10,32,43,.72);
+    --cy:#40d6ff; --cy-dim:#1b7c9c; --cy-pale:#bff0ff;
+    --gold:#E9C46A; --amber:#f0a23c; --red:#ff5f56; --ok:#4fd48a;
+    --ink:#dceef5; --muted:#6f93a1; --line:rgba(64,214,255,.18);
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:"Inter var",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 800px at 50% -10%,rgba(64,214,255,.10),transparent 60%),
+      radial-gradient(900px 700px at 90% 110%,rgba(233,196,106,.06),transparent 60%),
+      var(--bg);
+    color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;overflow:hidden;
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
+    background:repeating-linear-gradient(180deg,rgba(64,214,255,.030) 0 1px,transparent 1px 3px);
+    mix-blend-mode:screen;opacity:.5
+  }
+  button{font-family:inherit;cursor:pointer;color:inherit;background:none;border:0}
+  input,textarea{font-family:inherit;font-size:14px;color:inherit}
+  .mono{font-family:var(--mono)}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:rgba(64,214,255,.22);border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* ---------- shell ---------- */
+  #app{display:flex;flex-direction:column;height:100%;height:100dvh}
+
+  header{
+    display:flex;align-items:center;gap:14px;padding:10px 18px;
+    border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(7,28,38,.9),rgba(7,28,38,.35));
+    flex:0 0 auto;flex-wrap:wrap
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);letter-spacing:.34em;font-size:15px;font-weight:700;color:var(--cy-pale)}
+  .brand i{width:9px;height:9px;border-radius:50%;background:var(--cy);box-shadow:0 0 12px var(--cy);font-style:normal;animation:pulse 2.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+  .pills{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .pill{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+    padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);
+    white-space:nowrap;display:inline-flex;align-items:center;gap:6px
+  }
+  .pill b{font-weight:700}
+  .pill.ok{color:var(--ok);border-color:rgba(79,212,138,.36);background:rgba(79,212,138,.07)}
+  .pill.warn{color:var(--amber);border-color:rgba(240,162,60,.36);background:rgba(240,162,60,.07)}
+  .pill.bad{color:var(--red);border-color:rgba(255,95,86,.36);background:rgba(255,95,86,.07)}
+  .pill.live{color:var(--cy);border-color:rgba(64,214,255,.4);background:rgba(64,214,255,.08)}
+  .spacer{flex:1 1 auto}
+  .clock{font-family:var(--mono);font-size:13px;color:var(--cy-pale);letter-spacing:.08em;white-space:nowrap}
+  .clock small{display:block;font-size:9.5px;color:var(--muted);letter-spacing:.16em}
+  .iconbtn{
+    width:32px;height:32px;border-radius:8px;border:1px solid var(--line);color:var(--muted);
+    display:grid;place-items:center;font-size:15px;transition:.15s
+  }
+  .iconbtn:hover{color:var(--cy);border-color:rgba(64,214,255,.45);background:rgba(64,214,255,.07)}
+
+  /* ---------- grid ---------- */
+  main{
+    flex:1 1 auto;min-height:0;display:grid;gap:14px;padding:14px 18px 18px;
+    grid-template-columns:minmax(260px,1fr) minmax(340px,1.25fr) minmax(260px,1fr);
+  }
+  .col{display:flex;flex-direction:column;gap:14px;min-height:0;overflow-y:auto;padding-right:2px}
+  .col.center{overflow:hidden}
+
+  .panel{
+    border:1px solid var(--line);border-radius:12px;background:var(--panel);
+    backdrop-filter:blur(6px);display:flex;flex-direction:column;min-height:0;
+    box-shadow:inset 0 1px 0 rgba(64,214,255,.08),0 10px 30px rgba(0,0,0,.32)
+  }
+  .panel > h2{
+    margin:0;padding:9px 13px;font-family:var(--mono);font-size:10.5px;font-weight:700;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--cy);
+    border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px
+  }
+  .panel > h2 .count{margin-left:auto;color:var(--muted);letter-spacing:.1em;font-weight:600}
+  .panel > h2::before{content:"";width:5px;height:5px;background:var(--cy);border-radius:1px;box-shadow:0 0 8px var(--cy)}
+  .body{padding:11px 13px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0}
+  .empty{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--muted);
+    text-transform:uppercase;padding:8px 0;opacity:.75
+  }
+
+  /* rows */
+  .loop{display:flex;gap:10px;align-items:flex-start;padding-bottom:10px;border-bottom:1px solid rgba(64,214,255,.09)}
+  .loop:last-child{border-bottom:0;padding-bottom:0}
+  .loop .bar{width:3px;align-self:stretch;border-radius:2px;background:var(--cy-dim);flex:0 0 auto}
+  .loop.high .bar{background:var(--red);box-shadow:0 0 10px rgba(255,95,86,.6)}
+  .loop.med .bar{background:var(--amber)}
+  .loop .who{font-weight:650;color:var(--cy-pale);font-size:13.5px}
+  .loop .what{color:var(--ink);opacity:.9;font-size:12.5px}
+  .loop q{display:block;margin-top:4px;font-style:italic;color:var(--muted);font-size:12px;border-left:2px solid var(--line);padding-left:8px;quotes:none}
+  .age{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-top:4px}
+
+  .ev{display:flex;gap:11px;align-items:baseline}
+  .ev .t{font-family:var(--mono);font-size:12px;color:var(--cy);min-width:58px;letter-spacing:.04em}
+  .ev .ti{font-size:13px}
+  .ev .wh{font-size:11.5px;color:var(--muted)}
+  .ev.soon .ti{color:var(--gold);font-weight:650}
+
+  .sys{display:flex;align-items:center;gap:9px;font-size:12.5px}
+  .sys .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--muted)}
+  .sys .dot.ok{background:var(--ok);box-shadow:0 0 8px rgba(79,212,138,.7)}
+  .sys .dot.warn{background:var(--amber);box-shadow:0 0 8px rgba(240,162,60,.7)}
+  .sys .dot.down{background:var(--red);box-shadow:0 0 9px rgba(255,95,86,.8);animation:pulse 1.4s infinite}
+  .sys .nm{font-family:var(--mono);font-size:12px}
+  .sys .dt{margin-left:auto;font-size:11px;color:var(--muted);text-align:right}
+
+  .stat{display:flex;align-items:baseline;gap:8px}
+  .stat .n{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--cy-pale);line-height:1}
+  .stat .n.warn{color:var(--amber)}
+  .stat .n.bad{color:var(--red)}
+  .stat .u{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+  .kv span:first-child{color:var(--muted)}
+  .kv span:last-child{font-family:var(--mono)}
+
+  /* ---------- reactor ---------- */
+  .center-stack{display:flex;flex-direction:column;gap:14px;min-height:0;height:100%}
+  .reactor-wrap{
+    position:relative;flex:0 0 auto;display:grid;place-items:center;padding:6px 0 2px
+  }
+  .reactor{position:relative;width:184px;height:184px;display:grid;place-items:center;cursor:pointer;user-select:none}
+  .reactor .ring{position:absolute;border-radius:50%;border:1px solid rgba(64,214,255,.35)}
+  .r1{inset:0;border-width:1px;border-style:dashed;animation:spin 24s linear infinite}
+  .r2{inset:16px;border-color:rgba(64,214,255,.22);animation:spin 16s linear infinite reverse}
+  .r3{inset:30px;border-color:rgba(233,196,106,.28)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .reactor .arc{
+    position:absolute;inset:8px;border-radius:50%;
+    background:conic-gradient(from 0deg,transparent 0 62%,rgba(64,214,255,.55) 78%,transparent 92%);
+    -webkit-mask:radial-gradient(circle,transparent 62%,#000 63%);
+    mask:radial-gradient(circle,transparent 62%,#000 63%);
+    animation:spin 3.6s linear infinite;opacity:.85
+  }
+  .reactor .core{
+    width:78px;height:78px;border-radius:50%;
+    background:radial-gradient(circle at 50% 45%,#eafcff,#7fe3ff 42%,#1b8fb8 74%,#0b3f52);
+    box-shadow:0 0 30px rgba(64,214,255,.55),0 0 80px rgba(64,214,255,.28),inset 0 0 18px rgba(255,255,255,.5);
+    display:grid;place-items:center;transition:.2s
+  }
+  .reactor .core span{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:#04303f;font-weight:700
+  }
+  body.listening .reactor .core{
+    background:radial-gradient(circle at 50% 45%,#fff6e6,#ffd27f 42%,#d99326 74%,#5a3a09);
+    box-shadow:0 0 34px rgba(233,196,106,.7),0 0 90px rgba(233,196,106,.35),inset 0 0 18px rgba(255,255,255,.55);
+    animation:breathe 1.1s ease-in-out infinite
+  }
+  body.listening .reactor .core span{color:#3a2600}
+  body.speaking .reactor .core{animation:breathe .55s ease-in-out infinite}
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+  .reactor .halo{
+    position:absolute;inset:-10px;border-radius:50%;border:1px solid transparent;
+    transition:.2s;pointer-events:none
+  }
+  body.listening .reactor .halo{border-color:rgba(233,196,106,.55);box-shadow:0 0 26px rgba(233,196,106,.32)}
+
+  .bars{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:8px;opacity:.35;transition:opacity .2s}
+  body.listening .bars,body.speaking .bars{opacity:1}
+  .bars i{width:3px;background:linear-gradient(180deg,var(--cy),rgba(64,214,255,.15));border-radius:2px;height:4px;transition:height .09s linear}
+
+  .caption{
+    text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);min-height:16px;margin-top:6px
+  }
+  .caption b{color:var(--gold);font-weight:600}
+
+  /* ---------- log ---------- */
+  .log{flex:1 1 auto;min-height:0}
+  .log .body{gap:12px}
+  .turn{display:flex;gap:9px;align-items:flex-start;animation:fade .28s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .turn .tag{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--cy-dim);
+    text-transform:uppercase;padding-top:3px;min-width:44px;flex:0 0 auto
+  }
+  .turn.me .tag{color:var(--gold)}
+  .turn .txt{font-size:13.5px;white-space:pre-wrap;overflow-wrap:anywhere}
+  .turn.me .txt{color:var(--cy-pale)}
+  .turn.sys .txt{color:var(--muted);font-family:var(--mono);font-size:11.5px}
+  .turn.err .txt{color:var(--red);font-family:var(--mono);font-size:11.5px}
+
+  .composer{display:flex;gap:8px;align-items:center;padding:10px 13px;border-top:1px solid var(--line);flex:0 0 auto}
+  .composer input{
+    flex:1;background:rgba(4,18,26,.7);border:1px solid var(--line);border-radius:8px;
+    padding:9px 12px;outline:none;transition:.15s
+  }
+  .composer input:focus{border-color:rgba(64,214,255,.5);box-shadow:0 0 0 3px rgba(64,214,255,.08)}
+  .composer input::placeholder{color:var(--muted)}
+  .btn{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    padding:8px 14px;border-radius:8px;border:1px solid var(--line);color:var(--cy);
+    background:rgba(64,214,255,.07);transition:.15s;white-space:nowrap
+  }
+  .btn:hover{background:rgba(64,214,255,.16);border-color:rgba(64,214,255,.5)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.gold{color:var(--gold);border-color:rgba(233,196,106,.35);background:rgba(233,196,106,.08)}
+  .btn.gold:hover{background:rgba(233,196,106,.18)}
+  .btn.ghost{color:var(--muted);background:none}
+  .btn.ghost:hover{color:var(--ink)}
+  .btn.sm{padding:5px 10px;font-size:10px}
+
+  /* ---------- pending ---------- */
+  .pend{border:1px solid rgba(233,196,106,.26);border-radius:9px;padding:10px 11px;background:rgba(233,196,106,.05)}
+  .pend .ti{font-size:13px;font-weight:650;color:var(--gold)}
+  .pend .dt{font-size:12px;color:var(--muted);margin:3px 0 8px}
+  .pend .acts{display:flex;gap:7px}
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:100;display:grid;place-items:center;
+    background:rgba(2,9,13,.88);backdrop-filter:blur(7px);padding:20px
+  }
+  .overlay.hidden{display:none}
+  .card{
+    width:100%;max-width:560px;max-height:86vh;overflow:auto;border:1px solid var(--line);
+    border-radius:14px;background:linear-gradient(180deg,rgba(9,30,40,.98),rgba(5,18,25,.98));
+    padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.6)
+  }
+  .card h3{
+    margin:0 0 4px;font-family:var(--mono);font-size:12px;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--cy)
+  }
+  .card p.sub{margin:0 0 16px;color:var(--muted);font-size:12.5px}
+  .field{margin-bottom:14px}
+  .field label{
+    display:block;font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:5px
+  }
+  .field input,.field select{
+    width:100%;background:rgba(4,18,26,.8);border:1px solid var(--line);
+    border-radius:8px;padding:9px 11px;outline:none
+  }
+  .field input:focus,.field select:focus{border-color:rgba(64,214,255,.5)}
+  .field select option{background:#071c26}
+  .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);cursor:pointer}
+  .toggle input{width:auto;accent-color:#40d6ff}
+
+  /* engage */
+  #engage .card{max-width:420px;text-align:center}
+  #engage .reactor{margin:6px auto 18px}
+  .hint{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:14px}
+
+  /* diagnostics */
+  table.diag{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+  table.diag th{
+    text-align:left;color:var(--muted);font-weight:600;letter-spacing:.12em;font-size:9.5px;
+    text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--line)
+  }
+  table.diag td{padding:7px 8px;border-bottom:1px solid rgba(64,214,255,.08);vertical-align:top}
+  table.diag td.s-ok{color:var(--ok)}
+  table.diag td.s-bad{color:var(--red)}
+  table.diag td.s-warn{color:var(--amber)}
+  table.diag .peek{color:var(--muted);word-break:break-all;max-width:260px;display:block}
+
+  @media(max-width:1080px){
+    main{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr}
+    .col.center{grid-column:1/-1;grid-row:1;min-height:400px}
+  }
+  @media(max-width:720px){
+    body{overflow:auto}
+    #app{height:auto;min-height:100dvh}
+    main{grid-template-columns:1fr;padding:12px}
+    .col{overflow:visible}
+    .col.center{min-height:0;overflow:visible}
+    .log{min-height:280px}
+    header{padding:9px 12px;gap:9px}
+    .brand{font-size:13px;letter-spacing:.26em}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="brand"><i></i>JARVIS</div>
+    <div class="pills">
+      <span class="pill" id="p-link">◇ <b>LINK</b> <span id="p-link-v">—</span></span>
+      <span class="pill" id="p-mic">◇ <b>MIC</b> <span id="p-mic-v">—</span></span>
+      <span class="pill" id="p-voice">◇ <b>VOICE</b> <span id="p-voice-v">—</span></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="clock"><span id="clock">--:--</span><small id="datestr">—</small></div>
+    <button class="iconbtn" id="btn-diag" title="Diagnostics">◧</button>
+    <button class="iconbtn" id="btn-settings" title="Settings">⚙</button>
+  </header>
+
+  <main>
+    <!-- LEFT -->
+    <div class="col">
+      <section class="panel">
+        <h2>Open Loops <span class="count" id="c-loops"></span></h2>
+        <div class="body" id="loops"><div class="empty">no link</div></div>
+      </section>
+      <section class="panel">
+        <h2>Agenda <span class="count" id="c-agenda"></span></h2>
+        <div class="body" id="agenda"><div class="empty">no link</div></div>
+      </section>
+    </div>
+
+    <!-- CENTER -->
+    <div class="col center">
+      <div class="center-stack">
+        <div class="reactor-wrap">
+          <div class="reactor" id="reactor" role="button" tabindex="0" aria-label="Push to talk">
+            <div class="halo"></div>
+            <div class="ring r1"></div>
+            <div class="ring r2"></div>
+            <div class="ring r3"></div>
+            <div class="arc"></div>
+            <div class="core"><span id="core-label">IDLE</span></div>
+          </div>
+          <div class="bars" id="bars"></div>
+          <div class="caption" id="caption">Hold the reactor, or say <b>“Jarvis”</b></div>
+        </div>
+
+        <section class="panel log">
+          <h2>Transcript
+            <span class="count"><button class="btn sm ghost" id="btn-clear">clear</button></span>
+          </h2>
+          <div class="body" id="log"></div>
+          <div class="composer">
+            <input id="input" placeholder="Type a command…" autocomplete="off" spellcheck="false">
+            <button class="btn" id="btn-send">Send</button>
+            <button class="btn gold" id="btn-brief">Brief</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col">
+      <section class="panel">
+        <h2>Systems <span class="count" id="c-sys"></span></h2>
+        <div class="body" id="systems"><div class="empty">no link</div></div>
+      </section>
+      <section class="panel">
+        <h2>Content Pipeline</h2>
+        <div class="body" id="content"><div class="empty">no link</div></div>
+      </section>
+      <section class="panel">
+        <h2>Ledger</h2>
+        <div class="body" id="ledger"><div class="empty">no link</div></div>
+      </section>
+      <section class="panel">
+        <h2>Awaiting Approval <span class="count" id="c-pend"></span></h2>
+        <div class="body" id="pending"><div class="empty">nothing pending</div></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ENGAGE -->
+<div class="overlay" id="engage">
+  <div class="card">
+    <h3>Jarvis</h3>
+    <div class="reactor" style="width:150px;height:150px">
+      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+      <div class="arc"></div><div class="core"><span>READY</span></div>
+    </div>
+    <p class="sub" style="margin-bottom:18px">Browsers hold speech until you touch the page. One tap and I have a voice.</p>
+    <button class="btn gold" id="btn-engage" style="padding:11px 26px">Engage</button>
+    <div class="hint">audio + microphone</div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="overlay hidden" id="login">
+  <div class="card" style="max-width:400px">
+    <h3>Authenticate</h3>
+    <p class="sub">The API asked who you are.</p>
+    <div class="field">
+      <label for="pw">Passphrase</label>
+      <input id="pw" type="password" autocomplete="current-password">
+    </div>
+    <div class="row">
+      <button class="btn gold" id="btn-login">Unlock</button>
+      <button class="btn ghost" id="btn-login-skip">Continue without</button>
+    </div>
+    <div class="hint" id="login-err" style="color:var(--red)"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay hidden" id="settings">
+  <div class="card">
+    <h3>Settings</h3>
+    <p class="sub">Stored in this browser only.</p>
+    <div class="field">
+      <label for="s-api">API base URL</label>
+      <input id="s-api" placeholder="(blank = same origin, proxied to jarvis-api)" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="s-voice">Voice</label>
+      <select id="s-voice"></select>
+    </div>
+    <div class="field">
+      <label>Speech</label>
+      <div class="row">
+        <label class="toggle"><input type="checkbox" id="s-autospeak"> Speak replies aloud</label>
+        <label class="toggle"><input type="checkbox" id="s-wake"> Wake word “Jarvis”</label>
+      </div>
+    </div>
+    <div class="field">
+      <label for="s-rate">Rate <span class="mono" id="s-rate-v"></span></label>
+      <input type="range" id="s-rate" min="0.7" max="1.3" step="0.02">
+    </div>
+    <div class="field">
+      <label for="s-refresh">Auto-refresh (minutes, 0 = off)</label>
+      <input id="s-refresh" type="number" min="0" max="120" step="1">
+    </div>
+    <div class="row">
+      <button class="btn gold" id="btn-save">Save</button>
+      <button class="btn ghost" id="btn-test">Test voice</button>
+      <button class="btn ghost" id="btn-logout">Forget token</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="btn-close-settings">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- DIAGNOSTICS -->
+<div class="overlay hidden" id="diag">
+  <div class="card" style="max-width:720px">
+    <h3>Endpoint Diagnostics</h3>
+    <p class="sub">What each route actually answered. This is the fastest way to reconcile the front end with the API.</p>
+    <table class="diag">
+      <thead><tr><th>Route</th><th>Status</th><th>Type</th><th>Response head</th></tr></thead>
+      <tbody id="diag-rows"><tr><td colspan="4" class="peek">Not run.</td></tr></tbody>
+    </table>
+    <div class="row" style="margin-top:16px">
+      <button class="btn gold" id="btn-run-diag">Run probe</button>
+      <button class="btn ghost" id="btn-copy-diag">Copy report</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="btn-close-diag">Close</button>
+    </div>
+    <div class="hint" id="diag-note"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════ config ══════════════════════ */
+var LS = "jarvis.cfg.v1";
+var cfg = Object.assign({
+  api: "",              // blank = same origin (vercel.json rewrites /api/* to jarvis-api)
+  token: "",
+  voice: "",
+  rate: 0.98,
+  pitch: 0.9,
+  autospeak: true,
+  wake: false,
+  refreshMin: 10
+}, load());
+
+function load(){ try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch(e){ return {}; } }
+function save(){ try { localStorage.setItem(LS, JSON.stringify(cfg)); } catch(e){} }
+
+var $ = function(id){ return document.getElementById(id); };
+
+/* ══════════════════════ state ══════════════════════ */
+var S = {
+  engaged:false, listening:false, speaking:false, busy:false,
+  link:"unknown",           // ok | down | auth
+  data:null, pending:[],
+  rec:null, recOn:false, ptt:false,
+  voices:[], voice:null,
+  audio:null, lastDiag:null
+};
+
+/* ══════════════════════ tiny helpers ══════════════════════ */
+function el(tag, cls, txt){
+  var n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(txt != null) n.textContent = txt;
+  return n;
+}
+function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+function esc(s){ return String(s == null ? "" : s); }
+
+// First present, non-empty value among candidate keys.
+function pick(obj){
+  if(!obj || typeof obj !== "object") return undefined;
+  for(var i=1;i<arguments.length;i++){
+    var k = arguments[i];
+    if(obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
+  }
+  return undefined;
+}
+// Coerce anything vaguely list-shaped into an array.
+function asArray(v){
+  if(Array.isArray(v)) return v;
+  if(v && typeof v === "object"){
+    var inner = pick(v,"items","list","data","results","rows","entries");
+    if(Array.isArray(inner)) return inner;
+  }
+  return [];
+}
+function num(v){
+  if(typeof v === "number" && isFinite(v)) return v;
+  if(typeof v === "string"){
+    var n = parseFloat(v.replace(/[^0-9.\-]/g,""));
+    if(isFinite(n)) return n;
+  }
+  return null;
+}
+function money(v, cur){
+  var n = num(v);
+  if(n === null) return null;
+  try{
+    return n.toLocaleString("en-US",{style:"currency",currency:cur||"USD",maximumFractionDigits:0});
+  }catch(e){ return "$" + Math.round(n).toLocaleString("en-US"); }
+}
+
+/* ══════════════════════ transport ══════════════════════ */
+function base(){ return (cfg.api || "").replace(/\/+$/,""); }
+function url(path){ return base() + path; }
+
+function headers(extra){
+  var h = Object.assign({}, extra || {});
+  if(cfg.token){
+    h["Authorization"] = "Bearer " + cfg.token;
+    h["x-jarvis-token"] = cfg.token;
+  }
+  return h;
+}
+
+// Returns {ok, status, ctype, data, text, error} — never throws.
+function call(path, opts){
+  opts = opts || {};
+  var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, opts.timeout || 45000);
+
+  var init = {
+    method: opts.method || "GET",
+    headers: headers(opts.body ? {"Content-Type":"application/json"} : null),
+    credentials: "include"
+  };
+  if(ctrl) init.signal = ctrl.signal;
+  if(opts.body) init.body = JSON.stringify(opts.body);
+
+  return fetch(url(path), init).then(function(res){
+    clearTimeout(timer);
+    var ctype = res.headers.get("content-type") || "";
+    if(opts.raw && res.ok && /audio|octet-stream/i.test(ctype)){
+      return res.blob().then(function(b){
+        return {ok:true, status:res.status, ctype:ctype, blob:b};
+      });
+    }
+    return res.text().then(function(text){
+      var data = null;
+      if(text){
+        try{ data = JSON.parse(text); }catch(e){ data = null; }
+      }
+      // Vercel's SSO wall answers with an HTML login page, not the API.
+      var sso = /_vercel_sso|vercel\.com\/sso-api|Authentication Required|Vercel Authentication/i.test(text || "")
+                && /html/i.test(ctype);
+      return {ok:res.ok && !sso, status:res.status, ctype:ctype, data:data, text:text, sso:sso};
+    });
+  }).catch(function(err){
+    clearTimeout(timer);
+    var msg = err && err.name === "AbortError" ? "timeout" : (err && err.message) || "network error";
+    // A cross-origin fetch that the browser blocks surfaces as an opaque TypeError.
+    if(/failed to fetch|load failed|networkerror/i.test(msg)) msg = "unreachable (network, CORS, or offline)";
+    return {ok:false, status:0, error:msg};
+  });
+}
+
+function setLink(state, detail){
+  S.link = state;
+  var p = $("p-link"), v = $("p-link-v");
+  p.className = "pill " + (state === "ok" ? "ok" : state === "auth" ? "warn" : "bad");
+  v.textContent = detail || (state === "ok" ? "live" : state === "auth" ? "locked" : "down");
+}
+
+/* ══════════════════════ speech out ══════════════════════ */
+var synth = window.speechSynthesis || null;
+
+function loadVoices(){
+  if(!synth) return;
+  S.voices = synth.getVoices() || [];
+  if(!S.voices.length) return;
+
+  var want = cfg.voice;
+  var chosen = null;
+  if(want){
+    chosen = S.voices.filter(function(v){ return v.name === want; })[0] || null;
+  }
+  if(!chosen){
+    // Prefer a British male — the register only works in the right accent.
+    var pref = ["Daniel","Google UK English Male","Arthur","Oliver","Malcolm","Serena"];
+    for(var i=0;i<pref.length && !chosen;i++){
+      chosen = S.voices.filter(function(v){ return v.name.indexOf(pref[i]) === 0; })[0] || null;
+    }
+    if(!chosen) chosen = S.voices.filter(function(v){ return /en-GB|en_GB/i.test(v.lang); })[0] || null;
+    if(!chosen) chosen = S.voices.filter(function(v){ return /^en/i.test(v.lang); })[0] || null;
+  }
+  S.voice = chosen || S.voices[0] || null;
+
+  var p = $("p-voice"), v = $("p-voice-v");
+  if(S.voice){
+    p.className = "pill ok";
+    v.textContent = S.voice.name.length > 18 ? S.voice.name.slice(0,18) + "…" : S.voice.name;
+  } else {
+    p.className = "pill bad"; v.textContent = "none";
+  }
+  fillVoiceSelect();
+}
+function fillVoiceSelect(){
+  var sel = $("s-voice");
+  if(!sel) return;
+  clear(sel);
+  var auto = el("option", null, "Automatic (British male preferred)");
+  auto.value = "";
+  sel.appendChild(auto);
+  S.voices.forEach(function(v){
+    var o = el("option", null, v.name + "  ·  " + v.lang);
+    o.value = v.name;
+    sel.appendChild(o);
+  });
+  sel.value = cfg.voice || "";
+}
+if(synth){
+  loadVoices();
+  synth.onvoiceschanged = loadVoices;
+}
+
+function setSpeaking(on){
+  S.speaking = on;
+  document.body.classList.toggle("speaking", on);
+  $("core-label").textContent = on ? "SPEAK" : (S.listening ? "LISTEN" : "IDLE");
+}
+
+function stopSpeech(){
+  if(synth) try{ synth.cancel(); }catch(e){}
+  if(S.audio){ try{ S.audio.pause(); }catch(e){} S.audio = null; }
+  setSpeaking(false);
+}
+
+// Try the server's voice first (/api/say); fall back to the browser's.
+function speak(text){
+  if(!text || !cfg.autospeak) return Promise.resolve();
+  stopSpeech();
+  setSpeaking(true);
+
+  return call("/api/say", {method:"POST", body:{text:text}, raw:true, timeout:30000})
+    .then(function(r){
+      if(r.ok && r.blob && r.blob.size > 256) return playBlob(r.blob);
+      var src = r.ok && r.data ? pick(r.data,"audio","audioUrl","url","data","mp3") : null;
+      if(typeof src === "string" && src.length > 64){
+        var u = /^data:|^https?:|^blob:/.test(src) ? src : "data:audio/mpeg;base64," + src;
+        return playUrl(u);
+      }
+      return browserSpeak(text);
+    })
+    .catch(function(){ return browserSpeak(text); });
+}
+function playBlob(blob){ return playUrl(URL.createObjectURL(blob)); }
+function playUrl(u){
+  return new Promise(function(resolve){
+    var a = new Audio(u);
+    S.audio = a;
+    a.onended = a.onerror = function(){ S.audio = null; setSpeaking(false); resolve(); };
+    var p = a.play();
+    if(p && p.catch) p.catch(function(){ S.audio = null; setSpeaking(false); resolve(); });
+  });
+}
+function browserSpeak(text){
+  return new Promise(function(resolve){
+    if(!synth || !S.engaged){ setSpeaking(false); return resolve(); }
+    // Long briefings choke some engines; feed them a sentence at a time.
+    var chunks = String(text).replace(/\s+/g," ").match(/[^.!?]+[.!?]*/g) || [String(text)];
+    var merged = [], buf = "";
+    chunks.forEach(function(c){
+      if((buf + c).length > 220){ if(buf) merged.push(buf.trim()); buf = c; }
+      else buf += c;
+    });
+    if(buf.trim()) merged.push(buf.trim());
+
+    var i = 0;
+    function next(){
+      if(i >= merged.length){ setSpeaking(false); return resolve(); }
+      var u = new SpeechSynthesisUtterance(merged[i++]);
+      if(S.voice) u.voice = S.voice;
+      u.rate = cfg.rate; u.pitch = cfg.pitch; u.volume = 1;
+      u.onend = next;
+      u.onerror = function(){ setSpeaking(false); resolve(); };
+      try{ synth.speak(u); }catch(e){ setSpeaking(false); resolve(); }
+    }
+    next();
+  });
+}
+
+/* ══════════════════════ speech in ══════════════════════ */
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+
+function micPill(state, txt){
+  var p = $("p-mic"), v = $("p-mic-v");
+  p.className = "pill " + state;
+  v.textContent = txt;
+}
+
+function initRec(){
+  if(!SR){ micPill("bad","unsupported"); return; }
+  var r = new SR();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = "en-US";
+  r.maxAlternatives = 1;
+
+  r.onstart = function(){ micPill("live", cfg.wake ? "wake" : "on"); };
+
+  r.onresult = function(ev){
+    var interim = "", finalTxt = "";
+    for(var i = ev.resultIndex; i < ev.results.length; i++){
+      var t = ev.results[i][0].transcript;
+      if(ev.results[i].isFinal) finalTxt += t; else interim += t;
+    }
+    if(interim && !S.ptt) caption(interim);
+    if(!finalTxt.trim()) return;
+
+    var said = finalTxt.trim();
+    if(S.ptt){ caption(""); submit(said); return; }
+
+    if(cfg.wake){
+      var m = said.match(/\b(jarvis|travis|service|jervis)\b[,:\s]*(.*)$/i);
+      if(!m) { caption(""); return; }
+      var rest = (m[2] || "").trim();
+      caption("");
+      if(rest) submit(rest);
+      else { addTurn("sys","Listening, sir."); speak("Sir?"); }
+    }
+  };
+
+  r.onerror = function(ev){
+    var e = ev && ev.error;
+    if(e === "not-allowed" || e === "service-not-allowed"){
+      S.recOn = false; micPill("bad","blocked");
+      addTurn("err","Microphone permission denied. Voice input is off; typing still works.");
+    } else if(e === "no-speech" || e === "aborted" || e === "audio-capture"){
+      /* transient — onend restarts */
+    } else {
+      micPill("warn", String(e || "error"));
+    }
+  };
+
+  r.onend = function(){
+    setListening(false);
+    if(S.recOn){
+      // Chrome ends the session periodically; bring it straight back.
+      setTimeout(function(){
+        if(!S.recOn) return;
+        try{ r.start(); }catch(e){}
+      }, 350);
+    } else {
+      micPill("", "off");
+    }
+  };
+
+  S.rec = r;
+  micPill("", "off");
+}
+
+function startRec(){
+  if(!S.rec || S.recOn) return;
+  S.recOn = true;
+  try{ S.rec.start(); }catch(e){ S.recOn = false; }
+}
+function stopRec(){
+  if(!S.rec) return;
+  S.recOn = false;
+  try{ S.rec.stop(); }catch(e){}
+}
+function setListening(on){
+  S.listening = on;
+  document.body.classList.toggle("listening", on);
+  $("core-label").textContent = on ? "LISTEN" : (S.speaking ? "SPEAK" : "IDLE");
+}
+function caption(t){
+  var c = $("caption");
+  if(t) c.textContent = t;
+  else c.innerHTML = SR
+    ? 'Hold the reactor, or say <b>&ldquo;Jarvis&rdquo;</b>'
+    : 'Voice input is unavailable in this browser &mdash; type below';
+}
+
+// Push-to-talk: hold the reactor (or space).
+function pttStart(){
+  if(!S.rec || S.ptt) return;
+  stopSpeech();
+  S.ptt = true;
+  setListening(true);
+  caption("Listening…");
+  if(!S.recOn) startRec();
+}
+function pttEnd(){
+  if(!S.ptt) return;
+  S.ptt = false;
+  setListening(false);
+  caption("");
+  if(!cfg.wake) stopRec();
+}
+
+/* ══════════════════════ transcript ══════════════════════ */
+function addTurn(kind, text){
+  var wrap = $("log");
+  var t = el("div", "turn " + kind);
+  var tags = {me:"You", jarvis:"Jarvis", sys:"System", err:"Fault"};
+  t.appendChild(el("div","tag", tags[kind] || kind));
+  t.appendChild(el("div","txt", text));
+  wrap.appendChild(t);
+  wrap.scrollTop = wrap.scrollHeight;
+  while(wrap.children.length > 120) wrap.removeChild(wrap.firstChild);
+  return t;
+}
+
+/* ══════════════════════ commands ══════════════════════ */
+function submit(text){
+  text = String(text || "").trim();
+  if(!text || S.busy) return;
+  addTurn("me", text);
+
+  var low = text.toLowerCase();
+  if(/^(stop|quiet|silence|shut up|enough)\b/.test(low)){ stopSpeech(); addTurn("sys","Silenced."); return; }
+  if(/^(brief|briefing|status|catch me up|what'?s on my plate|where do things stand)\b/.test(low)){ return doBrief(); }
+  if(/^(refresh|reload|update)\b/.test(low)){ return doBrief(); }
+
+  S.busy = true; $("btn-send").disabled = true;
+  var ph = addTurn("sys","…");
+
+  call("/api/chat", {method:"POST", body:{message:text, text:text, prompt:text}})
+    .then(function(r){
+      ph.remove();
+      if(r.sso){ ssoBlocked(); return; }
+      if(r.status === 401 || r.status === 403){ needAuth(); return; }
+      if(!r.ok){
+        setLink("down");
+        addTurn("err","/api/chat — " + (r.error || ("HTTP " + r.status)));
+        return;
+      }
+      setLink("ok");
+      var reply = r.data
+        ? pick(r.data,"reply","response","text","message","content","output","answer","speech")
+        : (r.text || "");
+      if(reply && typeof reply === "object") reply = pick(reply,"text","content") || JSON.stringify(reply);
+      if(!reply){ addTurn("err","/api/chat returned nothing usable. Run diagnostics."); return; }
+      addTurn("jarvis", reply);
+      speak(reply);
+      // A chat turn may carry fresh panel data with it.
+      if(r.data && (r.data.loops || r.data.agenda || r.data.systems)) applyBrief(r.data);
+    })
+    .catch(function(e){ ph.remove(); addTurn("err", String(e)); })
+    .then(function(){ S.busy = false; $("btn-send").disabled = false; });
+}
+
+function doBrief(){
+  if(S.busy) return;
+  S.busy = true;
+  $("btn-brief").disabled = true;
+  var ph = addTurn("sys","Sweeping…");
+
+  call("/api/brief", {timeout:60000})
+    .then(function(r){
+      if(!r.ok && (r.status === 404 || r.status === 405)){
+        return call("/api/brief", {method:"POST", body:{}, timeout:60000});
+      }
+      return r;
+    })
+    .then(function(r){
+      ph.remove();
+      if(r.sso){ ssoBlocked(); return; }
+      if(r.status === 401 || r.status === 403){ needAuth(); return; }
+      if(!r.ok){
+        setLink("down");
+        addTurn("err","/api/brief — " + (r.error || ("HTTP " + r.status)));
+        return;
+      }
+      setLink("ok");
+      var d = r.data;
+      if(!d && r.text){ // plain-text briefing is still a briefing
+        addTurn("jarvis", r.text); speak(r.text);
+        return;
+      }
+      applyBrief(d);
+      var spoken = pick(d,"speech","brief","summary","text","spoken","narration");
+      if(typeof spoken === "object") spoken = pick(spoken,"text","content");
+      if(spoken){ addTurn("jarvis", spoken); speak(spoken); }
+      else addTurn("sys","Panels updated. No spoken briefing in the payload.");
+    })
+    .catch(function(e){ ph.remove(); addTurn("err", String(e)); })
+    .then(function(){ S.busy = false; $("btn-brief").disabled = false; loadPending(); });
+}
+
+function needAuth(){
+  setLink("auth");
+  $("login").classList.remove("hidden");
+  $("pw").focus();
+}
+
+// Vercel's own SSO gate is not something a passphrase box can solve.
+function ssoBlocked(){
+  setLink("down","vercel sso");
+  addTurn("err","Vercel Authentication is guarding the API — it answered with a login page instead of data.");
+  addTurn("sys","Fix: Vercel → jarvis-api → Settings → Deployment Protection → turn off Vercel Authentication (the API has its own /api/login), or give it a custom domain, which SSO exempts.");
+}
+
+/* ══════════════════════ panels ══════════════════════ */
+function applyBrief(d){
+  if(!d || typeof d !== "object") return;
+  // Some APIs wrap the payload one level down.
+  if(d.data && typeof d.data === "object" && !d.loops && !d.agenda) d = d.data;
+  S.data = d;
+  renderLoops(asArray(pick(d,"loops","openLoops","open_loops","threads","waiting")));
+  renderAgenda(asArray(pick(d,"agenda","calendar","events","schedule")));
+  renderSystems(asArray(pick(d,"systems","status","health","deployments")));
+  renderContent(pick(d,"content","pipeline","social","posts"));
+  renderLedger(pick(d,"ledger","money","finance","cash"));
+  var p = pick(d,"pending","approvals","queue");
+  if(p !== undefined) renderPending(asArray(p));
+}
+
+function renderLoops(list){
+  var box = $("loops"); clear(box);
+  $("c-loops").textContent = list.length ? list.length : "";
+  if(!list.length){ box.appendChild(el("div","empty", S.data ? "all clear" : "no link")); return; }
+  list.forEach(function(x){
+    if(typeof x === "string") x = {what:x};
+    var sev = String(pick(x,"severity","priority","level") || "").toLowerCase();
+    var row = el("div","loop " + (/high|urgent|critical/.test(sev) ? "high" : /med|warn/.test(sev) ? "med" : ""));
+    row.appendChild(el("div","bar"));
+    var mid = el("div");
+    mid.style.flex = "1";
+    var who = pick(x,"who","from","name","person","sender");
+    if(who) mid.appendChild(el("div","who", who));
+    var what = pick(x,"what","subject","title","summary","ask","text");
+    if(what) mid.appendChild(el("div","what", what));
+    var q = pick(x,"quote","excerpt","snippet","body");
+    if(q){ var qq = el("q", null, q); mid.appendChild(qq); }
+    var age = pick(x,"age","waiting","since","cold","elapsed");
+    if(age) mid.appendChild(el("div","age", age));
+    row.appendChild(mid);
+    box.appendChild(row);
+  });
+}
+
+function renderAgenda(list){
+  var box = $("agenda"); clear(box);
+  $("c-agenda").textContent = list.length ? list.length : "";
+  if(!list.length){ box.appendChild(el("div","empty", S.data ? "clear diary" : "no link")); return; }
+  list.forEach(function(x){
+    if(typeof x === "string") x = {title:x};
+    var row = el("div","ev" + (pick(x,"soon","next") ? " soon" : ""));
+    row.appendChild(el("div","t", pick(x,"time","start","when","at") || "—"));
+    var mid = el("div"); mid.style.flex = "1";
+    mid.appendChild(el("div","ti", pick(x,"title","name","summary","subject") || "Untitled"));
+    var wh = pick(x,"where","location","with","attendees");
+    if(wh) mid.appendChild(el("div","wh", Array.isArray(wh) ? wh.join(", ") : wh));
+    row.appendChild(mid);
+    box.appendChild(row);
+  });
+}
+
+function renderSystems(list){
+  var box = $("systems"); clear(box);
+  $("c-sys").textContent = list.length ? list.length : "";
+  if(!list.length){ box.appendChild(el("div","empty", S.data ? "nothing reporting" : "no link")); return; }
+  list.forEach(function(x){
+    if(typeof x === "string") x = {name:x};
+    var st = String(pick(x,"status","state","health") || "").toLowerCase();
+    var cls = /ok|ready|healthy|green|up|passing/.test(st) ? "ok"
+            : /warn|building|degraded|amber|queued/.test(st) ? "warn"
+            : /err|fail|down|red|canceled/.test(st) ? "down" : "";
+    var row = el("div","sys");
+    var d = el("span","dot " + cls); row.appendChild(d);
+    row.appendChild(el("span","nm", pick(x,"name","project","id","service") || "—"));
+    var dt = pick(x,"detail","message","note","updated","age","url");
+    if(dt) row.appendChild(el("span","dt", dt));
+    box.appendChild(row);
+  });
+}
+
+function renderContent(c){
+  var box = $("content"); clear(box);
+  if(!c || typeof c !== "object"){ box.appendChild(el("div","empty", S.data ? "no data" : "no link")); return; }
+  var days = num(pick(c,"runwayDays","runway_days","runway","daysLeft","days"));
+  var stat = el("div","stat");
+  var n = el("div","n" + (days !== null && days < 1 ? " bad" : days !== null && days < 3 ? " warn" : ""),
+              days === null ? "—" : String(days));
+  stat.appendChild(n);
+  stat.appendChild(el("div","u","days of queue"));
+  box.appendChild(stat);
+
+  var sched = pick(c,"scheduled","queued","count","posts");
+  if(sched !== undefined){
+    var r1 = el("div","kv");
+    r1.appendChild(el("span",null,"Scheduled"));
+    r1.appendChild(el("span",null, String(Array.isArray(sched) ? sched.length : sched)));
+    box.appendChild(r1);
+  }
+  var next = pick(c,"nextSlot","next","nextPost","upcoming");
+  if(next){
+    var r2 = el("div","kv");
+    r2.appendChild(el("span",null,"Next slot"));
+    r2.appendChild(el("span",null, typeof next === "object" ? (pick(next,"time","at","when") || "—") : next));
+    box.appendChild(r2);
+  }
+  var ch = pick(c,"channels","accounts");
+  if(ch !== undefined){
+    var r3 = el("div","kv");
+    r3.appendChild(el("span",null,"Channels"));
+    r3.appendChild(el("span",null, String(Array.isArray(ch) ? ch.length : ch)));
+    box.appendChild(r3);
+  }
+  if(days !== null && days < 3){
+    var w = el("div","age", days < 1 ? "Queue is dry" : "Queue runs dry in " + days + "d");
+    w.style.color = days < 1 ? "var(--red)" : "var(--amber)";
+    box.appendChild(w);
+  }
+}
+
+function renderLedger(l){
+  var box = $("ledger"); clear(box);
+  if(!l || typeof l !== "object"){ box.appendChild(el("div","empty", S.data ? "no data" : "no link")); return; }
+  var cur = pick(l,"currency") || "USD";
+  var cash = money(pick(l,"cash","balance","bank","available","position"), cur);
+  var stat = el("div","stat");
+  stat.appendChild(el("div","n", cash || "—"));
+  stat.appendChild(el("div","u","on hand"));
+  box.appendChild(stat);
+
+  var obs = asArray(pick(l,"obligations","due","bills","upcoming"));
+  obs.slice(0,6).forEach(function(o){
+    if(typeof o === "string") o = {name:o};
+    var r = el("div","kv");
+    var nm = pick(o,"name","label","title","what") || "—";
+    var due = pick(o,"due","date","when");
+    r.appendChild(el("span",null, nm + (due ? " · " + due : "")));
+    r.appendChild(el("span",null, money(pick(o,"amount","value","total"), cur) || "—"));
+    box.appendChild(r);
+  });
+  var note = pick(l,"note","warning","alert");
+  if(note){
+    var w = el("div","age", note);
+    w.style.color = "var(--amber)";
+    box.appendChild(w);
+  }
+}
+
+function renderPending(list){
+  S.pending = list;
+  var box = $("pending"); clear(box);
+  $("c-pend").textContent = list.length ? list.length : "";
+  if(!list.length){ box.appendChild(el("div","empty","nothing pending")); return; }
+  list.forEach(function(x, idx){
+    if(typeof x === "string") x = {title:x};
+    var id = pick(x,"id","key","uuid","ref");
+    if(id === undefined) id = idx;
+    var card = el("div","pend");
+    card.appendChild(el("div","ti", pick(x,"title","action","summary","name","what") || "Untitled action"));
+    var dt = pick(x,"detail","description","body","preview","reason");
+    if(dt) card.appendChild(el("div","dt", dt));
+    var acts = el("div","acts");
+    var ok = el("button","btn gold sm","Approve");
+    var no = el("button","btn ghost sm","Dismiss");
+    ok.onclick = function(){ decide(id, "approve", card); };
+    no.onclick = function(){ decide(id, "reject", card); };
+    acts.appendChild(ok); acts.appendChild(no);
+    card.appendChild(acts);
+    box.appendChild(card);
+  });
+}
+
+function decide(id, decision, card){
+  card.style.opacity = ".45";
+  var body = {id:id, decision:decision, action:decision, approved: decision === "approve"};
+  call("/api/pending", {method:"POST", body:body})
+    .then(function(r){
+      if(!r.ok && (r.status === 404 || r.status === 405)){
+        return call("/api/pending/" + encodeURIComponent(id), {method:"POST", body:body});
+      }
+      return r;
+    })
+    .then(function(r){
+      if(r.ok){
+        addTurn("sys", (decision === "approve" ? "Approved" : "Dismissed") + ": " + id);
+        loadPending();
+      } else {
+        card.style.opacity = "1";
+        addTurn("err","/api/pending — " + (r.error || ("HTTP " + r.status)));
+      }
+    });
+}
+
+function loadPending(){
+  return call("/api/pending").then(function(r){
+    if(r.status === 401 || r.status === 403){ needAuth(); return; }
+    if(!r.ok) return;
+    var list = Array.isArray(r.data) ? r.data : asArray(pick(r.data || {}, "pending","approvals","queue","items"));
+    renderPending(list);
+  });
+}
+
+/* ══════════════════════ diagnostics ══════════════════════ */
+var ROUTES = [
+  {m:"GET",  p:"/api/brief"},
+  {m:"GET",  p:"/api/pending"},
+  {m:"POST", p:"/api/chat",  b:{message:"ping"}},
+  {m:"POST", p:"/api/say",   b:{text:"ping"}},
+  {m:"POST", p:"/api/login", b:{}}
+];
+
+function runDiag(){
+  var tbody = $("diag-rows");
+  clear(tbody);
+  var loading = el("tr");
+  var td = el("td", "peek", "Probing " + ROUTES.length + " routes…");
+  td.colSpan = 4; loading.appendChild(td); tbody.appendChild(loading);
+  $("diag-note").textContent = "";
+
+  var report = [];
+  var chain = Promise.resolve();
+  var results = [];
+
+  ROUTES.forEach(function(rt){
+    chain = chain.then(function(){
+      return call(rt.p, {method:rt.m, body:rt.b, timeout:20000}).then(function(r){
+        results.push({rt:rt, r:r});
+      });
+    });
+  });
+
+  chain.then(function(){
+    clear(tbody);
+    results.forEach(function(x){
+      var rt = x.rt, r = x.r;
+      var tr = el("tr");
+      tr.appendChild(el("td", null, rt.m + " " + rt.p));
+
+      var scls = r.ok ? "s-ok" : (r.sso || r.status === 401 || r.status === 403) ? "s-warn" : "s-bad";
+      var label = r.sso ? "SSO WALL" : (r.status ? String(r.status) : (r.error || "ERR"));
+      tr.appendChild(el("td", scls, label));
+      tr.appendChild(el("td", null, r.blob ? "audio" : (r.ctype || "").split(";")[0] || "—"));
+
+      var head = r.blob ? "[" + r.blob.size + " bytes of audio]"
+               : (r.text || r.error || "").slice(0, 220);
+      var cell = el("td");
+      cell.appendChild(el("span","peek", head || "—"));
+      tr.appendChild(cell);
+      tbody.appendChild(tr);
+
+      report.push(rt.m + " " + rt.p + "  ->  " + (r.status || r.error) +
+                  "  [" + ((r.ctype||"").split(";")[0] || "-") + "]\n    " + (head || ""));
+    });
+
+    var anyOk = results.some(function(x){ return x.r.ok; });
+    var anyNet = results.some(function(x){ return x.r.status === 0; });
+    setLink(anyOk ? "ok" : "down", anyOk ? "live" : anyNet ? "unreachable" : "erroring");
+
+    if(results.some(function(x){ return x.r.sso; })){
+      $("diag-note").textContent = "Vercel Authentication is intercepting the API. Turn it off on the jarvis-api project (Settings → Deployment Protection) or point it at a custom domain.";
+    } else if(anyNet && base()){
+      $("diag-note").textContent = "Direct cross-origin calls need CORS headers on the API. Clear the API base URL in Settings to use the same-origin proxy instead.";
+    } else if(anyNet){
+      $("diag-note").textContent = "Same-origin /api/* is not answering — check the rewrite in vercel.json and that jarvis-api is deployed and unprotected.";
+    }
+
+    S.lastDiag = "JARVIS endpoint probe\nbase: " + (base() || "(same origin)") +
+                 "\nwhen: " + new Date().toISOString() + "\n\n" + report.join("\n\n");
+  });
+}
+
+/* ══════════════════════ chrome ══════════════════════ */
+function tickClock(){
+  var now = new Date();
+  var t = now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/New_York"});
+  var d = now.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",timeZone:"America/New_York"});
+  $("clock").textContent = t;
+  $("datestr").textContent = d + " · ET";
+}
+setInterval(tickClock, 15000); tickClock();
+
+// waveform
+(function(){
+  var wrap = $("bars"), n = 28, bars = [];
+  for(var i=0;i<n;i++){ var b = el("i"); wrap.appendChild(b); bars.push(b); }
+  var phase = 0;
+  setInterval(function(){
+    var active = S.listening || S.speaking;
+    phase += 0.35;
+    for(var i=0;i<n;i++){
+      var h = active
+        ? 4 + Math.abs(Math.sin(phase + i*0.55)) * (S.speaking ? 20 : 14) * (0.55 + Math.random()*0.65)
+        : 4 + Math.abs(Math.sin(phase*0.25 + i*0.4)) * 3;
+      bars[i].style.height = Math.min(26, h).toFixed(1) + "px";
+    }
+  }, 90);
+})();
+
+/* ══════════════════════ wiring ══════════════════════ */
+var reactor = $("reactor");
+reactor.addEventListener("mousedown", function(e){ e.preventDefault(); pttStart(); });
+document.addEventListener("mouseup", pttEnd);
+reactor.addEventListener("touchstart", function(e){ e.preventDefault(); pttStart(); }, {passive:false});
+document.addEventListener("touchend", pttEnd);
+reactor.addEventListener("keydown", function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); pttStart(); } });
+reactor.addEventListener("keyup", function(e){ if(e.key === "Enter" || e.key === " ") pttEnd(); });
+
+document.addEventListener("keydown", function(e){
+  var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if(e.key === "Escape"){
+    ["settings","diag"].forEach(function(id){ $(id).classList.add("hidden"); });
+    stopSpeech();
+    return;
+  }
+  if(typing) return;
+  if(e.code === "Space" && !e.repeat){ e.preventDefault(); pttStart(); }
+});
+document.addEventListener("keyup", function(e){ if(e.code === "Space") pttEnd(); });
+
+$("btn-send").onclick = function(){ var i = $("input"); submit(i.value); i.value = ""; };
+$("input").addEventListener("keydown", function(e){
+  if(e.key === "Enter"){ submit(this.value); this.value = ""; }
+});
+$("btn-brief").onclick = doBrief;
+$("btn-clear").onclick = function(){ clear($("log")); };
+
+$("btn-settings").onclick = function(){ openSettings(); };
+$("btn-close-settings").onclick = function(){ $("settings").classList.add("hidden"); };
+$("btn-diag").onclick = function(){ $("diag").classList.remove("hidden"); };
+$("btn-close-diag").onclick = function(){ $("diag").classList.add("hidden"); };
+$("btn-run-diag").onclick = runDiag;
+$("btn-copy-diag").onclick = function(){
+  if(!S.lastDiag){ $("diag-note").textContent = "Run the probe first."; return; }
+  var done = function(){ $("diag-note").textContent = "Report copied."; };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(S.lastDiag).then(done, function(){ $("diag-note").textContent = "Copy blocked by the browser."; });
+  } else { $("diag-note").textContent = "Clipboard unavailable."; }
+};
+
+function openSettings(){
+  $("s-api").value = cfg.api;
+  $("s-autospeak").checked = !!cfg.autospeak;
+  $("s-wake").checked = !!cfg.wake;
+  $("s-rate").value = cfg.rate;
+  $("s-rate-v").textContent = Number(cfg.rate).toFixed(2) + "×";
+  $("s-refresh").value = cfg.refreshMin;
+  fillVoiceSelect();
+  $("settings").classList.remove("hidden");
+}
+$("s-rate").addEventListener("input", function(){ $("s-rate-v").textContent = Number(this.value).toFixed(2) + "×"; });
+$("btn-save").onclick = function(){
+  cfg.api = $("s-api").value.trim();
+  cfg.autospeak = $("s-autospeak").checked;
+  cfg.wake = $("s-wake").checked;
+  cfg.rate = parseFloat($("s-rate").value) || 0.98;
+  cfg.voice = $("s-voice").value;
+  cfg.refreshMin = Math.max(0, parseInt($("s-refresh").value, 10) || 0);
+  save();
+  loadVoices();
+  applyWake();
+  scheduleRefresh();
+  $("settings").classList.add("hidden");
+  addTurn("sys","Settings saved.");
+};
+$("btn-test").onclick = function(){
+  cfg.voice = $("s-voice").value;
+  cfg.rate = parseFloat($("s-rate").value) || 0.98;
+  loadVoices();
+  browserSpeak("Systems nominal, sir. Voice check complete.");
+};
+$("btn-logout").onclick = function(){ cfg.token = ""; save(); addTurn("sys","Token forgotten."); };
+
+$("btn-login").onclick = function(){
+  var pw = $("pw").value;
+  $("login-err").textContent = "";
+  call("/api/login", {method:"POST", body:{password:pw, passphrase:pw, pin:pw, token:pw}})
+    .then(function(r){
+      if(!r.ok){
+        $("login-err").textContent = r.error || ("Rejected — HTTP " + r.status);
+        return;
+      }
+      var tok = r.data ? pick(r.data,"token","accessToken","jwt","session","key") : null;
+      cfg.token = tok || pw;
+      save();
+      $("login").classList.add("hidden");
+      $("pw").value = "";
+      setLink("ok");
+      boot();
+    });
+};
+$("btn-login-skip").onclick = function(){ $("login").classList.add("hidden"); };
+$("pw").addEventListener("keydown", function(e){ if(e.key === "Enter") $("btn-login").click(); });
+
+function applyWake(){
+  if(cfg.wake && SR) startRec();
+  else if(!S.ptt) stopRec();
+}
+
+var refreshTimer = null;
+function scheduleRefresh(){
+  if(refreshTimer) clearInterval(refreshTimer);
+  if(cfg.refreshMin > 0){
+    refreshTimer = setInterval(function(){
+      if(!S.busy && !S.speaking) doBrief();
+    }, cfg.refreshMin * 60000);
+  }
+}
+
+/* ══════════════════════ boot ══════════════════════ */
+$("btn-engage").onclick = function(){
+  S.engaged = true;
+  $("engage").classList.add("hidden");
+  // Unlock the speech engine inside the gesture — Safari insists.
+  if(synth){
+    try{
+      var u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0; synth.speak(u);
+    }catch(e){}
+  }
+  initRec();
+  caption("");
+  applyWake();
+  boot();
+};
+
+function boot(){
+  addTurn("sys","Link check…");
+  call("/api/brief", {timeout:12000}).then(function(r){
+    if(r.sso){ ssoBlocked(); return; }
+    if(r.status === 401 || r.status === 403){
+      addTurn("sys","The API wants credentials.");
+      needAuth();
+      return;
+    }
+    if(r.status === 0){
+      setLink("down","unreachable");
+      addTurn("err","No answer from " + (base() || "same-origin /api") + " — " + r.error);
+      addTurn("sys","Open diagnostics (◧) to see exactly what each route returned.");
+      return;
+    }
+    if(!r.ok){
+      setLink("down","HTTP " + r.status);
+      addTurn("err","/api/brief returned HTTP " + r.status + ". Panels stay empty rather than guess.");
+      return;
+    }
+    setLink("ok");
+    var d = r.data;
+    if(d) applyBrief(d);
+    var spoken = d ? pick(d,"speech","brief","summary","text","spoken") : r.text;
+    if(spoken){ addTurn("jarvis", spoken); speak(spoken); }
+    else addTurn("sys","Linked. Say “brief me” when you're ready.");
+    loadPending();
+  });
+  scheduleRefresh();
+}
+
+// If speech was never available, say so honestly up front.
+if(!SR) caption("");
+setLink("down","checking");
+
+})();
+</script>
+</body>
+</html>

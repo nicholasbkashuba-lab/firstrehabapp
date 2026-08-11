@@ -1,0 +1,3 @@
+# The clinic portal deploys from this repo root. Jarvis is Nick's private HUD and
+# ships to its own Vercel project — keep it off the clinic's public deployment.
+jarvis/
