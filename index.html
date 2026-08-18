@@ -809,6 +809,8 @@ function unpaidFieldHTML(id,checked,noBalance){
 }
 /* small "unpaid" flag shown beside the type pill (the Unpaid type already says it itself) */
 const unpaidTag=(t)=>(t&&t.unpaid&&t.type!=="Unpaid")?' <span class="unpaid-tag" title="Unpaid — does not use the time-off balance">unpaid</span>':"";
+/* entries created by marking time off on a timesheet — the sheet stays their source of truth */
+const srcTag=(t)=>(t&&t.src==="ts")?' <span class="unpaid-tag" title="Marked on the timesheet — edit it there">timesheet</span>':"";
 const SHIRT_COLORS=["Blue","Green","Black","Maroon"];
 const SHIRT_HEX={Blue:"#2f6f9e",Green:"#3f9c78",Black:"#2b2b2b",Maroon:"#7c3244"};
 const SHIRT_SIZES=["XS","S","M","L","XL","2XL","3XL"];
@@ -907,7 +909,7 @@ function normalizeDB(){
   /* heal accidental duplicate timesheets (same person + same period): merge day-by-day, entries always win */
   if(Array.isArray(DB.timesheets)&&DB.timesheets.length>1){
     const byKey={}, out=[];
-    const hasData=x=>!!(x&&(((x.segs||[]).length)||(+x.vac||0)>0||(x.notes||"")));
+    const hasData=x=>!!(x&&(((x.segs||[]).length)||(+x.vac||0)>0||(+x.offUnpaid||0)>0||(x.notes||"")));
     DB.timesheets.forEach(ts=>{
       const k=(ts.empId||"")+"|"+(ts.start||"");
       const ex=byKey[k];
@@ -922,6 +924,8 @@ function normalizeDB(){
           const seen=new Set((ed.segs||[]).map(key));
           (d.segs||[]).forEach(s=>{ if(!seen.has(key(s))) (ed.segs=ed.segs||[]).push(s); });
           ed.vac=Math.max(+ed.vac||0,+d.vac||0);
+          const eu=Math.max(+ed.offUnpaid||0,+d.offUnpaid||0); if(eu) ed.offUnpaid=eu;
+          if(!ed.offType&&d.offType) ed.offType=d.offType;
           if(d.notes&&d.notes!==ed.notes&&!(ed.notes||"").includes(d.notes)) ed.notes=(ed.notes?ed.notes+" · ":"")+d.notes;
         }
       });
@@ -963,7 +967,7 @@ function initCloud(){
    Every part of the data that's a list of records (timesheets, time off, …) is merged
    record-by-record on save, so two people saving at the same moment can't wipe each
    other out. The server also snapshots every previous version into a history table. */
-const APP_VER=50;   // client version (drives auto-update); the DB save-guard floor is v25
+const APP_VER=51;   // client version (drives auto-update); the DB save-guard floor is v25
 const LIST_KEYS=["employees","timeoff","hours","timesheets","announcements","events","shirtRequests","feedback","media","messages","readmarks","tombstones","groups"];
 let BASE=null;   // the cloud data as of our last successful sync — the reference point for merging
 function snapBase(obj){
@@ -986,7 +990,8 @@ function mergeDay(bd,ld,rd){
   const lu=+((ld&&ld.upd)||0), ru=+((rd&&rd.upd)||0);
   if(lu!==ru) return lu>ru?ld:rd;                        // freshest real edit wins
   if(filledSegsN(ld)!==filledSegsN(rd)) return filledSegsN(ld)>filledSegsN(rd)?ld:rd;
-  return dayTotal(ld,false)>=dayTotal(rd,false)?ld:rd;   // never keep the thinner copy
+  const w=d=>dayTotal(d,false)+(+((d&&d.offUnpaid)||0));
+  return w(ld)>=w(rd)?ld:rd;                             // never keep the thinner copy
 }
 function mergeTimesheet(bv,lv,rv){
   const out={};
@@ -1524,7 +1529,10 @@ function toDayShare(t,ds){
 }
 function usedMap(id,y){
   y=y||YEAR; const per={};
-  DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===y&&t.status==="approved"&&!isUnpaidTO(t)&&t.type!=="Holiday")
+  /* src:"ts" entries are MIRRORS of a timesheet day — the timesheet pass below already
+     accounts for those hours. Counting them here as well would double the day whenever
+     the same day was also logged the old way (two entries + the sheet = 16 h for an 8 h day). */
+  DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===y&&t.status==="approved"&&!isUnpaidTO(t)&&t.type!=="Holiday"&&t.src!=="ts")
     .forEach(t=>{
       const dates=[];
       if(Array.isArray(t.days)&&t.days.length) dates.push(...t.days);
@@ -2165,7 +2173,7 @@ function viewInbox(v){
 
    <div class="section-title sm"><h2>🕒 Time-off requests</h2><span class="hint">${pendTO.length} pending</span></div>
    ${pendTO.length?`<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Employee</th><th>Dates</th><th>Type</th><th class="num">Hours</th><th></th></tr></thead><tbody>
-     ${pendTO.map(t=>`<tr><td><b>${who(t.empId)}</b></td><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td>
+     ${pendTO.map(t=>`<tr><td><b>${who(t.empId)}</b></td><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${srcTag(t)}${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td>
        <td><div class="row-actions"><button class="btn tiny" onclick="approve('${t.id}')">Approve</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">Decline</button></div></td></tr>`).join("")}
      </tbody></table></div>`:`<div class="card" style="margin-bottom:20px;color:var(--muted)">No pending time-off requests.</div>`}
 
@@ -2392,7 +2400,7 @@ function dashTimeoffHTML(){
       <div class="avatar">${e.photo?`<img src="${e.photo}" alt="">`:initials(e.name)}</div>
       <div style="flex:1;min-width:160px">
         <b>${esc(e.name)}</b> <span style="color:var(--muted);font-size:12.5px">wants time off</span>
-        <div style="font-size:13.5px;margin-top:2px"><b>${esc(span)}</b> · <span class="type-pill t-${t.type}">${esc(t.type)}</span>${unpaidTag(t)} · ${round(t.hours)} h (${d} day${d===1?"":"s"})</div>
+        <div style="font-size:13.5px;margin-top:2px"><b>${esc(span)}</b> · <span class="type-pill t-${t.type}">${esc(t.type)}</span>${unpaidTag(t)}${srcTag(t)} · ${round(t.hours)} h (${d} day${d===1?"":"s"})</div>
         ${t.note?`<div style="color:var(--muted);font-size:12.5px;margin-top:2px">“${esc(t.note)}”</div>`:""}
       </div>
       <div class="row-actions">
@@ -2476,7 +2484,7 @@ function ptoDetailHTML(id){
    ${bankLedgerHTML(id)}
    <div class="section-title sm"><h2>Days — taken &amp; requested</h2><button class="btn" onclick="openTimeOff('${id}')">＋ Add time off</button></div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
-   ${rows.length?rows.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
+   ${rows.length?rows.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${srcTag(t)}${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
      <td>${t.status==="pending"?`<span class="st-pill st-pending">Pending</span>`:`<span class="st-pill st-approved">Approved</span>`}</td><td class="note-cell">${esc(t.note||"")}</td>
      <td><div class="row-actions">${t.status==="pending"?`<button class="btn tiny" onclick="approve('${t.id}')">Approve</button>`:""}<button class="btn sm ghost" onclick="openTimeOff(null,'${t.id}')">Edit</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">Delete</button></div></td></tr>`).join("")
     :(sheetVac.length?"":`<tr><td colspan="7"><div class="empty"><div class="big">No time off logged yet</div>Add their first day off.</div></td></tr>`)}
@@ -2552,7 +2560,7 @@ function viewAdminTimeoff(v){
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Employee</th><th>Type</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
    ${rows.length?rows.map(t=>`<tr>
        <td>${esc(toWhen(t))}</td><td>${esc(empName(t.empId))}${getsPTO(t.empId)?"":' <span class="nopto-tag">no balance</span>'}</td>
-       <td><span class="type-pill t-${t.type}">${t.type}</span>${unpaidTag(t)}</td><td class="num">${round(t.hours)} h</td>
+       <td><span class="type-pill t-${t.type}">${t.type}</span>${unpaidTag(t)}${srcTag(t)}</td><td class="num">${round(t.hours)} h</td>
        <td>${t.status==="pending"?`<span class="st-pill st-pending">Pending</span>`:`<span class="st-pill st-approved">Approved</span>`}</td>
        <td class="note-cell">${esc(t.note||"")}</td>
        <td><div class="row-actions">
@@ -2664,7 +2672,7 @@ function viewMyOverview(v){
    ${bdayHTML(5)}
    <div class="section-title sm" style="margin-top:6px"><h2>Recent time off</h2><button class="btn sm ghost" onclick="setTab('mytime')">See all</button></div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Hours</th><th>Status</th></tr></thead><tbody>
-   ${myTO.length?myTO.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td><td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td></tr>`).join("")
+   ${myTO.length?myTO.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${srcTag(t)}${t.note?`<div class="to-note always">"${esc(t.note)}"</div>`:""}</td><td class="num">${round(t.hours)} h</td><td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td></tr>`).join("")
     :`<tr><td colspan="4"><div class="empty"><div class="big">No time off logged yet</div>Use “Request time off” above.</div></td></tr>`}
    </tbody></table></div>`;
 }
@@ -2701,7 +2709,7 @@ function viewMyTime(v){
      <div class="stat"><div class="k">Hours pending</div><div class="v">${round(pendH)}<span class="u">hrs</span></div></div>
    </div>
    <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
-   ${rows.length?rows.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
+   ${rows.length?rows.map(t=>`<tr><td>${esc(toWhen(t))}</td><td><span class="type-pill t-${t.type}">${TYPE_ICON[t.type]||""} ${t.type}</span>${unpaidTag(t)}${srcTag(t)}${t.note?`<div class="to-note">"${esc(t.note)}"</div>`:""}</td><td class="num">${daysOf(+t.hours||0)}</td><td class="num">${round(t.hours)} h</td>
      <td>${t.status==="pending"?'<span class="st-pill st-pending">Pending</span>':'<span class="st-pill st-approved">Approved</span>'}</td><td class="note-cell">${esc(t.note||"")}</td>
      <td><div class="row-actions"><button class="btn sm ghost" onclick="openTimeOff(null,'${t.id}')">Edit</button><button class="btn danger" onclick="delRow('timeoff','${t.id}')">${t.status==="pending"?"Cancel":"Delete"}</button></div></td></tr>`).join("")
     :`<tr><td colspan="7"><div class="empty"><div class="big">No time off yet for ${YEAR}</div>Request your first day off.</div></td></tr>`}
@@ -2850,6 +2858,7 @@ function openTimeOff(prefill,editId){
     <div class="round-hint" id="m_autoHint">Hours auto-fill at 8 per day — type your own for part days.</div>
     ${unpaidFieldHTML("m_unpaid",editing?isUnpaidTO(editing):!getsPTO(eid),!getsPTO(eid))}
     <div class="field"><label>What's this time off for?</label><textarea class="inp" id="m_note" rows="2" placeholder="e.g. Doctor's appointment · family trip · jury duty">${editing?esc(editing.note||""):""}</textarea></div>
+    ${editing&&editing.src==="ts"?`<div class="round-hint">📋 This came from ${esc((emp(editing.empId)||{}).first||"the employee")}'s timesheet. Changing the hours on that day's timesheet entry will overwrite what you set here.</div>`:""}
     ${!isAdm?`<div class="round-hint">You can change any day — even past ones. Your edit is sent to your manager to approve.</div>`:""}
   </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTimeOff('${editId||""}')">${editing?(isAdm?"Save":"Submit for approval"):"Add entry"}</button></div>`);
   setTimeout(()=>{ if(TOP.mode==="days") topChips(); topAuto(); topPDRender(); },60);
@@ -3086,7 +3095,17 @@ function removeEmp(id){
   DB.timeoff=DB.timeoff.filter(t=>t.empId!==id);DB.hours=DB.hours.filter(h=>h.empId!==id);DB.employees=DB.employees.filter(e=>e.id!==id);
   save();closeModal();render();
 }
-function delRow(kind,id){if(!confirm("Delete this entry?"))return;tomb(id);DB[kind]=DB[kind].filter(x=>x.id!==id);save();render();}
+function delRow(kind,id){if(!confirm("Delete this entry?"))return;
+  if(kind==="timeoff"){ const t=(DB.timeoff||[]).find(x=>x&&x.id===id); if(t&&t.src==="ts") clearTSDayOff(t.empId,t.date); }
+  tomb(id);DB[kind]=DB[kind].filter(x=>x.id!==id);save();render();}
+/* take the time off back off the timesheet day an entry was marked on, so sheet and log agree */
+function clearTSDayOff(empId,dateStr){
+  const ts=findTS(empId,fmtD(periodStartFor(parseD(dateStr)))); if(!ts) return;
+  const d=(ts.days||[]).find(x=>x&&x.date===dateStr); if(!d||!dayOffHours(d)) return;
+  const was=daySummary(d);
+  d.vac=0; delete d.offUnpaid; delete d.offType;
+  logEdit(ts,d.date,was,daySummary(d)); stampEdit(d);
+}
 
 /* ================= TIMESHEETS ================= */
 let ROUND_MODE = (DB && DB.roundMode) || "nearest";     // 'up' | 'nearest' | 'off'
@@ -3178,6 +3197,7 @@ function holCredit(day,useRound){ return day.hol ? Math.max(0, 8 - dayWorked(day
 function dayTotal(day,useRound){ return dayWorked(day,useRound)+(+day.vac||0)+holCredit(day,useRound); }
 function tsWorked(ts,useRound){ return ts.days.reduce((s,d)=>s+dayWorked(d,useRound),0); }
 function tsVac(ts){ return ts.days.reduce((s,d)=>s+(+d.vac||0),0); }
+function tsUnpaid(ts){ return ts.days.reduce((s,d)=>s+(+d.offUnpaid||0),0); }
 function tsHol(ts,useRound){ return ts.days.reduce((s,d)=>s+holCredit(d,useRound),0); }
 function tsTotal(ts,useRound){ return tsWorked(ts,useRound)+tsVac(ts)+tsHol(ts,useRound); }
 function tsWorkedYear(empId,y,useRound){ return DB.timesheets.filter(t=>t.empId===empId).reduce((s,t)=>s+t.days.filter(d=>yearOf(d.date)===y).reduce((a,d)=>a+dayWorked(d,useRound),0),0); }
@@ -3195,7 +3215,7 @@ function renderTimesheet(v, empId, isAdmin){
   const startStr=fmtD(tsPeriod);
   const ts=getTS(empId,tsPeriod);
   const me=emp(empId);
-  const worked=tsWorked(ts,R), vac=tsVac(ts), hol=tsHol(ts,R), total=tsTotal(ts,R);
+  const worked=tsWorked(ts,R), vac=tsVac(ts), hol=tsHol(ts,R), total=tsTotal(ts,R), unpaidOff=tsUnpaid(ts);
   const dowNames=["MON","TUES","WED","THURS","FRI","SAT","SUN"];
   function dayCard(d,i){
     const dt=parseD(d.date), dow=(dt.getDay()+6)%7, weekend=dow>=5;
@@ -3211,12 +3231,13 @@ function renderTimesheet(v, empId, isAdmin){
         <div class="ts-total ${dt2===0?"zero":""}">${dt2?round(dt2)+"h":"—"}</div>
       </div>
       <div class="ts-segs">
-        ${segs.length?segs.map(s=>{const h=segHours(s,R);const km=KM[segKind(s)]||KM.am;return `<div class="ts-seg"><span class="seg-lbl ${km[1]}">${km[0]}</span><span class="seg-time">${showTime(s.in)}–${showTime(s.out)}</span><b>${round(h)}h</b></div>`;}).join(""):(d.vac>0||d.hol?"":'<div class="ts-empty">No time logged</div>')}
+        ${segs.length?segs.map(s=>{const h=segHours(s,R);const km=KM[segKind(s)]||KM.am;return `<div class="ts-seg"><span class="seg-lbl ${km[1]}">${km[0]}</span><span class="seg-time">${showTime(s.in)}–${showTime(s.out)}</span><b>${round(h)}h</b></div>`;}).join(""):(dayOffHours(d)>0||d.hol?"":'<div class="ts-empty">No time logged</div>')}
         ${d.hol?`<div class="ts-vac">🎆 Holiday${holCredit(d,R)?` +${round(holCredit(d,R))}h${dayWorked(d,R)?" → 8h":""}`:""}</div>`:""}
-        ${d.vac>0?`<div class="ts-vac">🌴 ${round(d.vac)}h ${esc((d.notes||"PTO").split(" ")[0])}</div>`:""}
-        ${d.notes&&d.vac===0&&!isHol?`<div class="ts-note">${esc(d.notes)}</div>`:""}
+        ${d.vac>0?`<div class="ts-vac">🌴 ${round(d.vac)}h ${esc(d.offType||(d.notes||"PTO").split(" ")[0])}</div>`:""}
+        ${+d.offUnpaid>0?`<div class="ts-vac">⏸️ ${round(d.offUnpaid)}h ${esc(d.offType||"time off")} · unpaid</div>`:""}
+        ${d.notes&&!d.vac&&!d.offUnpaid&&!isHol?`<div class="ts-note">${esc(d.notes)}</div>`:""}
       </div>
-      <button class="ts-edit ${segs.length||d.vac||d.hol?"":"add"}" onclick="openDay('${empId}','${startStr}',${i})">${segs.length||d.vac||d.hol?"Edit":"＋ Add time"}</button>
+      <button class="ts-edit ${segs.length||dayOffHours(d)||d.hol?"":"add"}" onclick="openDay('${empId}','${startStr}',${i})">${segs.length||dayOffHours(d)||d.hol?"Edit":"＋ Add time"}</button>
     </div>`;
   }
   const wk=(a,b)=>ts.days.slice(a,b).map((d,idx)=>dayCard(d,a+idx)).join("");
@@ -3227,7 +3248,7 @@ function renderTimesheet(v, empId, isAdmin){
   const daysWorked=ts.days.filter(d=>dayWorked(d,R)>0).length;
   const am=amHours(ts,R),pm=pmHours(ts,R),note=noteHours(ts,R),ot=periodOT(ts,R);
   const metrics=`<div class="ts-metrics">
-     <div class="tm big"><div class="tm-k">Total hours</div><div class="tm-v">${round(total)}<small>h</small></div><div class="tm-sub">${daysWorked} ${daysWorked===1?"day":"days"} worked${vac>0?` · ${round(vac)}h off`:""}${hol>0?` · ${round(hol)}h holiday`:""}</div></div>
+     <div class="tm big"><div class="tm-k">Total hours</div><div class="tm-v">${round(total)}<small>h</small></div><div class="tm-sub">${daysWorked} ${daysWorked===1?"day":"days"} worked${vac>0?` · ${round(vac)}h off`:""}${unpaidOff>0?` · ${round(unpaidOff)}h unpaid`:""}${hol>0?` · ${round(hol)}h holiday`:""}</div></div>
      <div class="tm"><div class="tm-k">☀️ Morning</div><div class="tm-v">${round(am)}<small>h</small></div></div>
      <div class="tm"><div class="tm-k">🌤️ Afternoon</div><div class="tm-v">${round(pm)}<small>h</small></div></div>
      ${note>0?`<div class="tm"><div class="tm-k">📝 Notes</div><div class="tm-v">${round(note)}<small>h</small></div></div>`:""}
@@ -3244,7 +3265,7 @@ function renderTimesheet(v, empId, isAdmin){
      <div class="grow"></div>
      ${isAdmin?roundSel():""}
      ${isAdmin&&findTS(empId,startStr)&&(findTS(empId,startStr).log||[]).length?`<button class="btn ghost" onclick="showTSLog('${empId}','${startStr}')">✎ Edits</button>`:""}
-     <button class="btn ghost" onclick="openVacQuick('${empId}','${startStr}')">🌴 Vacation</button>
+     <button class="btn ghost" onclick="openVacQuick('${empId}','${startStr}')">🌴 Mark time off</button>
      <button class="btn ghost" onclick="printTimesheet('${empId}','${startStr}')">🖨 Print</button>
      ${isAdmin
        ? (ts.approvedBy?`<button class="btn ghost" onclick="unapproveTS('${empId}','${startStr}')">Un-approve</button>`:`<button class="btn" onclick="approveTS('${empId}','${startStr}')">Approve</button>`)
@@ -3289,17 +3310,49 @@ function hasNotes(ts){ return ts.days.some(d=>segsOf(d,"note").length); }
 function weekWorked(ts,wk,R){ const a=wk*7; return ts.days.slice(a,a+7).reduce((s,d)=>s+dayWorked(d,R),0); }
 /* overtime = hours actually worked beyond 80 in the two-week pay period → banked time */
 function periodOT(ts,R){ return Math.max(0, tsWorked(ts,R) - 80); }
-function tsHasEntries(ts){ return ts.days.some(d=>(d.segs||[]).some(s=>s.in&&s.out) || (+d.vac||0)>0 || d.hol); }
+function tsHasEntries(ts){ return ts.days.some(d=>(d.segs||[]).some(s=>s.in&&s.out) || dayOffHours(d)>0 || d.hol); }
 /* Every edit stamps its day (when + who) AND appends a before→after entry to the
    sheet's edit log, so admins can see exactly what changed without leaving the roster. */
 function stampEdit(day){ day.upd=Date.now(); const w=emp(SESSION); if(w&&w.first) day.updBy=w.first; }
+/* ===== Time off marked straight on a timesheet =====
+   A day carries EITHER paid time off (d.vac — pays through payroll, draws the balance)
+   or unpaid time off (d.offUnpaid — shows on the sheet, pays nothing, draws nothing),
+   plus the kind of time off it was (d.offType).
+   Marking it here also PUSHES an approved entry into the shared time-off log, so the
+   day shows on the team calendar and in the time-off lists exactly like a request would.
+   The entry's id is derived from the person + day, so re-marking the same day updates
+   that one entry instead of piling up duplicates. */
+function dayOffHours(day){ return (+day.vac||0)+(+day.offUnpaid||0); }
+function tsOffId(empId,dateStr){ return "t_ts_"+empId+"_"+String(dateStr).replace(/\//g,"-"); }
+function pushDayOff(empId,day){
+  if(!day||!day.date) return;
+  const id=tsOffId(empId,day.date), i=DB.timeoff.findIndex(t=>t&&t.id===id);
+  const paid=+day.vac||0, unpaid=+day.offUnpaid||0, hours=paid+unpaid;
+  if(hours<=0){                                    // time off taken back off the day → drop the entry for real
+    if(i>=0){ DB.timeoff.splice(i,1); tomb(id); }
+    return;
+  }
+  /* the day may already be on the calendar from a request logged the normal way —
+     don't post a duplicate alongside it (we only ever manage our own mirror entry) */
+  if(i<0){
+    const dt=stripT(toDate(day.date));
+    if(DB.timeoff.some(t=>t&&t.empId===empId&&t.src!=="ts"&&t.status!=="declined"&&toCovers(t,dt))) return;
+  }
+  const rec={id,empId,date:day.date,end:"",hours,type:day.offType||"Vacation",
+             note:(day.notes||"").trim()||"Marked on the timesheet",
+             status:"approved",src:"ts"};
+  if(paid<=0) rec.unpaid=true;                     // unpaid day → never draws the balance
+  if(i>=0){ const merged=Object.assign({},DB.timeoff[i],rec); if(paid>0) delete merged.unpaid; DB.timeoff[i]=merged; }
+  else DB.timeoff.push(rec);
+}
 function daySummary(day){
   const closed=(day.segs||[]).filter(s=>s.in&&s.out).map(s=>`${fmt12(s.in)}–${fmt12(s.out)}`).join(", ");
   const open=(day.segs||[]).find(s=>s.in&&!s.out);
   const bits=[];
   if(closed) bits.push(closed);
   if(open) bits.push(`in ${fmt12(open.in)} (on the clock)`);
-  if(+day.vac) bits.push(`${round(+day.vac)}h time off`);
+  if(+day.vac) bits.push(`${round(+day.vac)}h ${day.offType?day.offType.toLowerCase():"time off"}`);
+  if(+day.offUnpaid) bits.push(`${round(+day.offUnpaid)}h unpaid ${day.offType?day.offType.toLowerCase():"time off"}`);
   if(day.hol) bits.push("holiday ✓");
   if(day.notes) bits.push(`“${day.notes}”`);
   return bits.length?`${bits.join(" · ")} — ${round(dayTotal(day,false))}h`:"empty";
@@ -3502,25 +3555,48 @@ function openVacQuick(empId,startStr){
   const ts=getTS(empId,parseD(startStr));
   const todayStr=fmtD(new Date());
   const defIdx=Math.max(0,ts.days.findIndex(d=>d.date===todayStr));
-  openModal(`<h3>🌴 Add vacation time</h3><div class="body">
-    <p class="sub" style="margin-top:0">Goes on the timesheet day, gets paid, and counts toward the time-off balance — all automatically.</p>
+  const who=emp(empId), forOther=empId!==SESSION;
+  const cur=ts.days[defIdx]||{};
+  const noBal=!getsPTO(empId);
+  window._vqTS=ts;
+  openModal(`<h3>🌴 Mark time off${forOther&&who?` — ${esc(who.first||who.name)}`:""}</h3><div class="body">
+    <p class="sub" style="margin-top:0">Lands on the timesheet day and posts to the team calendar and time-off log — approved, no request needed.</p>
     <div class="row2">
-      <div class="field"><label>Day</label><select class="inp" id="vq_day">${ts.days.map((d,i)=>`<option value="${i}" ${i===defIdx?"selected":""}>${parseD(d.date).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${(+d.vac||0)?` · has ${round(d.vac)} h`:""}</option>`).join("")}</select></div>
-      <div class="field"><label>Vacation hours</label><input class="inp" id="vq_hrs" type="number" step="0.25" min="0.25" max="12" value="8"></div>
+      <div class="field"><label>Day</label><select class="inp" id="vq_day" onchange="vqDay()">${ts.days.map((d,i)=>`<option value="${i}" ${i===defIdx?"selected":""}>${parseD(d.date).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${dayOffHours(d)?` · has ${round(dayOffHours(d))} h off`:""}</option>`).join("")}</select></div>
+      <div class="field"><label>Hours off</label><input class="inp" id="vq_hrs" type="number" step="0.25" min="0" max="12" value="${dayOffHours(cur)?round(dayOffHours(cur)):8}"></div>
     </div>
-    <div class="round-hint">A full day is 8 hours — change it for a half day (4) or any other amount.</div>
-  </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveVacQuick('${empId}','${startStr}')">Add vacation</button></div>`);
+    <div class="field"><label>Type of time off</label><select class="inp" id="vq_type">${typeOpts(cur.offType||"Vacation")}</select></div>
+    ${unpaidFieldHTML("vq_unpaid",(+cur.offUnpaid||0)>0||(noBal&&!(+cur.vac||0)),noBal)}
+    <div class="round-hint">A full day is 8 hours — change it for a half day (4) or any other amount. Set it to <b>0</b> to take the time off back off this day.</div>
+  </div><div class="foot"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveVacQuick('${empId}','${startStr}')">Save time off</button></div>`);
   setTimeout(()=>{ const h=$("#vq_hrs"); if(h){ h.focus(); h.select(); } },60);
 }
+/* switching day in the picker pulls that day's existing time off into the form */
+function vqDay(){
+  const ts=window._vqTS; if(!ts) return;
+  const d=ts.days[+($("#vq_day")||{}).value||0]; if(!d) return;
+  const h=$("#vq_hrs"); if(h) h.value=dayOffHours(d)?round(dayOffHours(d)):8;
+  const t=$("#vq_type"); if(t&&d.offType) t.value=d.offType;
+  const u=$("#vq_unpaid"); if(u&&dayOffHours(d)) u.checked=(+d.offUnpaid||0)>0;
+}
 function saveVacQuick(empId,startStr){
-  const i=+($("#vq_day")?$("#vq_day").value:0)||0, hrs=parseFloat($("#vq_hrs")?$("#vq_hrs").value:0)||0;
-  if(hrs<=0){ flash("Enter the vacation hours first"); return; }
+  const i=+($("#vq_day")?$("#vq_day").value:0)||0;
+  const hrs=parseFloat($("#vq_hrs")?$("#vq_hrs").value:0)||0;
+  const type=($("#vq_type")?$("#vq_type").value:"Vacation")||"Vacation";
+  const unpaid=!!($("#vq_unpaid")&&$("#vq_unpaid").checked);
+  if(hrs<0){ flash("Enter the hours off"); return; }
   const ts=ensureTS(empId,startStr); const d=ts.days[i]; if(!d) return;
   const was=daySummary(d);
-  d.vac=hrs; delete d.cleared;
+  if(hrs<=0){ d.vac=0; delete d.offUnpaid; delete d.offType; }
+  else if(unpaid){ d.vac=0; d.offUnpaid=hrs; d.offType=type; }
+  else { d.vac=hrs; delete d.offUnpaid; d.offType=type; }
+  delete d.cleared;
   logEdit(ts,d.date,was,daySummary(d)); stampEdit(d);
+  pushDayOff(empId,d);
   save(); closeModal(); render();
-  flash(`🌴 ${round(hrs)} h vacation on ${parseD(d.date).toLocaleDateString("en-US",{weekday:"short"})} — counted toward the time-off balance`);
+  const dow=parseD(d.date).toLocaleDateString("en-US",{weekday:"short"});
+  flash(hrs<=0 ? `Time off cleared from ${dow}`
+    : `🌴 ${round(hrs)} h ${unpaid?"unpaid ":""}${type.toLowerCase()} on ${dow} — on the calendar${unpaid?"":", counted toward the balance"}`);
 }
 function submitTS(empId,startStr){ const ts=ensureTS(empId,startStr); ts.submitted=true; save();render();flash("Timesheet submitted");
   if(empId===SESSION) sendPushNotify({kind:"timeoff",title:"🕒 Timesheet submitted",body:`${emp(empId).name} submitted their timesheet for ${startStr}`,url:"/"}); }
@@ -3582,6 +3658,7 @@ function openDay(empId,startStr,idx){
   const st={mIn:sh.am.in,mOut:sh.am.out,aIn:sh.pm.in,aOut:sh.pm.out,nIn:sh.note.in,nOut:sh.note.out};
   /* restore anything typed here that never got saved (survives refreshes, crashes, everything) */
   let draftVac=+src.vac||0, draftNotes=src.notes||"", draftHol=!!src.hol, restored=false;
+  let draftUnpaid=+src.offUnpaid||0, draftType=src.offType||"Vacation";
   try{
     const raw=sessionStorage.getItem("_dayDraft");
     if(raw){ const dr=JSON.parse(raw);
@@ -3590,10 +3667,12 @@ function openDay(empId,startStr,idx){
         if(dr.vac!=="") draftVac=parseFloat(dr.vac)||0;
         if(dr.notes) draftNotes=dr.notes;
         if(dr.hol!==undefined) draftHol=!!dr.hol;
+        if(dr.unpaid!==undefined&&dr.unpaid!=="") draftUnpaid=parseFloat(dr.unpaid)||0;
+        if(dr.offType) draftType=dr.offType;
         restored=true;
       } }
   }catch(e){}
-  window._editDay={empId,startStr,idx,date:src.date,admin,flex,shift:st,vac:draftVac,notes:draftNotes,hol:draftHol,restored};
+  window._editDay={empId,startStr,idx,date:src.date,admin,flex,shift:st,vac:draftVac,notes:draftNotes,hol:draftHol,unpaid:draftUnpaid,offType:draftType,restored};
   const dt=parseD(src.date);
   const helper = admin
     ? `<div class="round-hint">Totals round <b>${ROUND_MODE==="off"?"exactly as entered":ROUND_MODE+" to the quarter hour"}</b> (e.g. 9:10 → 9:15).</div>`
@@ -3636,9 +3715,12 @@ function openDay(empId,startStr,idx){
       <div class="round-hint" style="margin-top:5px">Worked a half day on the holiday? Enter the time above too — holiday pay fills the rest, and the day still totals exactly 8 h.</div>
     </div>
     <div class="row2">
-      <div class="field"><label>Time off hours</label><input class="inp" id="d_vac" type="number" step="0.25" value="${window._editDay.vac?round(window._editDay.vac):""}" placeholder="0" oninput="recalcDay()"></div>
-      <div class="field"><label>Notes</label><input class="inp" id="d_notes" value="${esc(window._editDay.notes||"")}" placeholder="e.g. Holiday" oninput="recalcDay()"></div>
+      <div class="field"><label>Time off hours</label><input class="inp" id="d_vac" type="number" step="0.25" value="${dayOffHours({vac:window._editDay.vac,offUnpaid:window._editDay.unpaid})?round(dayOffHours({vac:window._editDay.vac,offUnpaid:window._editDay.unpaid})):""}" placeholder="0" oninput="recalcDay()"></div>
+      <div class="field"><label>Kind of time off</label><select class="inp" id="d_offtype" onchange="recalcDay()">${typeOpts(window._editDay.offType||"Vacation")}</select></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink);margin:2px 0 10px"><input type="checkbox" id="d_unpaid" ${window._editDay.unpaid>0?"checked":""} onchange="recalcDay()" style="width:16px;height:16px"> These hours are unpaid</label>
+    <div class="round-hint" style="margin:-6px 0 10px">Time off entered here posts to the team calendar too. Unpaid hours don't get paid and don't come out of the balance.</div>
+    <div class="field"><label>Notes</label><input class="inp" id="d_notes" value="${esc(window._editDay.notes||"")}" placeholder="e.g. Holiday" oninput="recalcDay()"></div>
     <div class="day-total-line"><span>Daily total</span><span id="dayTotalOut">0 h</span></div>
   </div>
   <div class="foot"><button class="btn danger" style="margin-right:auto" onclick="clearDay()">Clear day</button><button class="btn ghost" onclick="cancelDay()">Cancel</button><button class="btn" onclick="saveDay()">Save day</button></div>`);
@@ -3694,11 +3776,11 @@ function shiftSegs(){
   return out;
 }
 function saveDayDraft(){ try{ const e=window._editDay; if(!e) return;
-  sessionStorage.setItem("_dayDraft",JSON.stringify({key:`${e.empId}|${e.startStr}|${e.idx}`,shift:e.shift,vac:($("#d_vac")?$("#d_vac").value:""),notes:($("#d_notes")?$("#d_notes").value:""),hol:!!($("#d_hol")&&$("#d_hol").checked),ts:Date.now()})); }catch(err){} }
-function recalcDay(){ const vac=parseFloat($("#d_vac")?.value)||0; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const hol=$("#d_hol")&&$("#d_hol").checked?Math.max(0,8-worked):0; const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac+hol)+" h"+(hol?" (incl. "+round(hol)+"h holiday)":""); saveDayDraft(); }
-function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; const h=$("#d_hol"); if(h)h.checked=false; window._editDay.vac=0; window._editDay.clearAll=true; saveDay(); }
+  sessionStorage.setItem("_dayDraft",JSON.stringify({key:`${e.empId}|${e.startStr}|${e.idx}`,shift:e.shift,vac:($("#d_vac")?$("#d_vac").value:""),notes:($("#d_notes")?$("#d_notes").value:""),hol:!!($("#d_hol")&&$("#d_hol").checked),unpaid:($("#d_unpaid")&&$("#d_unpaid").checked)?($("#d_vac")?$("#d_vac").value:""):0,offType:($("#d_offtype")?$("#d_offtype").value:""),ts:Date.now()})); }catch(err){} }
+function recalcDay(){ const off=parseFloat($("#d_vac")?.value)||0; const vac=($("#d_unpaid")&&$("#d_unpaid").checked)?0:off; const worked=shiftSegs().reduce((a,seg)=>a+segHours(seg,window._editDay.admin),0); const hol=$("#d_hol")&&$("#d_hol").checked?Math.max(0,8-worked):0; const el=$("#dayTotalOut"); if(el) el.textContent=round(worked+vac+hol)+" h"+(hol?" (incl. "+round(hol)+"h holiday)":""); saveDayDraft(); }
+function clearDay(){ const s=window._editDay.shift; s.mIn=s.mOut=s.aIn=s.aOut=s.nIn=s.nOut=""; const v=$("#d_vac"); if(v)v.value=""; const n=$("#d_notes"); if(n)n.value=""; const h=$("#d_hol"); if(h)h.checked=false; const u=$("#d_unpaid"); if(u)u.checked=false; window._editDay.vac=0; window._editDay.unpaid=0; window._editDay.clearAll=true; saveDay(); }
 function cancelDay(){ try{sessionStorage.removeItem("_dayDraft");}catch(e){} closeModal(); }   // Cancel really cancels — no zombie draft later
-function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseFloat($("#d_vac")?.value)||0; const notes=$("#d_notes")?.value.trim()||""; const hol=!!($("#d_hol")&&$("#d_hol").checked); const segs=shiftSegs(); const ts=ensureTS(empId,startStr);
+function saveDay(){ const {empId,startStr,idx}=window._editDay; const off=parseFloat($("#d_vac")?.value)||0; const offUnpaid=($("#d_unpaid")&&$("#d_unpaid").checked)?off:0; const vac=offUnpaid?0:off; const offType=($("#d_offtype")?$("#d_offtype").value:"")||"Vacation"; const notes=$("#d_notes")?.value.trim()||""; const hol=!!($("#d_hol")&&$("#d_hol").checked); const segs=shiftSegs(); const ts=ensureTS(empId,startStr);
   /* The editor manages one Morning + one Afternoon + one Notes entry. Anything else on
      the day — an open punch-clock check-in, a second same-shift entry — was never shown,
      so it can't have been deliberately removed: carry it over untouched. */
@@ -3707,10 +3789,13 @@ function saveDay(){ const {empId,startStr,idx}=window._editDay; const vac=parseF
   const extras=window._editDay.clearAll?[]:((src.segs||[]).filter(s=>!managed.has(s)));
   const day={date:src.date,segs:[...segs,...extras],vac,notes};
   if(hol) day.hol=true;
+  if(offUnpaid) day.offUnpaid=offUnpaid;
+  if(off>0) day.offType=offType;
   if(!day.segs.length) day.cleared=true;   // an intentionally emptied day — tells the server this isn't accidental loss
   logEdit(ts,day.date,daySummary(ts.days[idx]),daySummary(day));
   stampEdit(day);
   ts.days[idx]=day;
+  pushDayOff(empId,day);                                   // keep the team calendar in step with the sheet
   try{sessionStorage.removeItem("_dayDraft");}catch(e){} save();closeModal();render(); }
 
 
@@ -3738,7 +3823,7 @@ function printTimesheet(empId,startStr){
       ${row("Time out",d=>cellOut(d,0))}
       ${row("Time in",d=>cellTimes(d,1))}
       ${row("Time out",d=>cellOut(d,1))}
-      ${row("Vacation",d=>d.vac?round(d.vac):"")}
+      ${row("Vacation",d=>dayOffHours(d)?round(dayOffHours(d))+(d.offUnpaid?" U":""):"")}
       ${row("Holiday",d=>d.hol?round(holCredit(d,R)):"")}
       ${row("Notes",d=>esc(d.notes||""))}
       <tr class="totalrow"><td class="lbl">TOTAL</td>${cols.map(c=>`<td class="${c.we?"weekend":""}">${dayTotal(c.d,R)?round(dayTotal(c.d,R)):""}</td>`).join("")}</tr>
