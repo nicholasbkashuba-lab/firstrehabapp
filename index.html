@@ -1529,7 +1529,10 @@ function toDayShare(t,ds){
 }
 function usedMap(id,y){
   y=y||YEAR; const per={};
-  DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===y&&t.status==="approved"&&!isUnpaidTO(t)&&t.type!=="Holiday")
+  /* src:"ts" entries are MIRRORS of a timesheet day — the timesheet pass below already
+     accounts for those hours. Counting them here as well would double the day whenever
+     the same day was also logged the old way (two entries + the sheet = 16 h for an 8 h day). */
+  DB.timeoff.filter(t=>t.empId===id&&yearOf(t.date)===y&&t.status==="approved"&&!isUnpaidTO(t)&&t.type!=="Holiday"&&t.src!=="ts")
     .forEach(t=>{
       const dates=[];
       if(Array.isArray(t.days)&&t.days.length) dates.push(...t.days);
@@ -3328,6 +3331,12 @@ function pushDayOff(empId,day){
   if(hours<=0){                                    // time off taken back off the day → drop the entry for real
     if(i>=0){ DB.timeoff.splice(i,1); tomb(id); }
     return;
+  }
+  /* the day may already be on the calendar from a request logged the normal way —
+     don't post a duplicate alongside it (we only ever manage our own mirror entry) */
+  if(i<0){
+    const dt=stripT(toDate(day.date));
+    if(DB.timeoff.some(t=>t&&t.empId===empId&&t.src!=="ts"&&t.status!=="declined"&&toCovers(t,dt))) return;
   }
   const rec={id,empId,date:day.date,end:"",hours,type:day.offType||"Vacation",
              note:(day.notes||"").trim()||"Marked on the timesheet",
